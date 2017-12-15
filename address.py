@@ -8,11 +8,12 @@
 NOTE: I think you have to shutdown the Bitcoin client to
 successfully read addr.dat..."""
 
-from bsddb.db import *
 import logging
 from operator import itemgetter
 import sys
 import time
+
+from bsddb3.db import *  # pip3 install bsddb3
 
 from BCDataStream import *
 from base58 import public_key_to_bc_address

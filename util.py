@@ -5,7 +5,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Misc util routines."""
 
-from bsddb.db import *
+from bsddb3.db import *  # pip3 install bsddb3
 
 def long_hex(bytes):
   return bytes.encode('hex_codec')

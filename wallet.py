@@ -5,11 +5,12 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Code for parsing the wallet.dat file"""
 
-from bsddb.db import *
 import logging
 import re
 import sys
 import time
+
+from bsddb.db import *  # pip3 install bsddb3
 
 from BCDataStream import *
 from base58 import public_key_to_bc_address, bc_address_to_hash_160, hash_160

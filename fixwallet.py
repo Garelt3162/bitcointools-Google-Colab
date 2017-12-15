@@ -5,9 +5,10 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Recover from a semi-corrupt wallet."""
 
-from bsddb.db import *
 import logging
 import sys
+
+from bsddb3.db import *  # pip3 install bsddb3
 
 from wallet import rewrite_wallet, trim_wallet
 from util import determine_db_dir, create_env

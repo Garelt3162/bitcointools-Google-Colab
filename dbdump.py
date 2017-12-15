@@ -5,9 +5,10 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Code for dumping the bitcoin Berkeley db files in a human-readable format."""
 
-from bsddb.db import *
 import logging
 import sys
+
+from bsddb3.db import *  # pip3 install bsddb3
 
 from address import dump_addresses
 from wallet import dump_wallet, dump_accounts
