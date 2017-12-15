@@ -17,14 +17,15 @@ json_array = json.loads(json_string)
 
 columns = set()
 for item in json_array:
-  columns.update(set(item))
+    columns.update(set(item))
 
 writer = csv.writer(sys.stdout)
 writer.writerow(list(columns))
 for item in json_array:
-  row = []
-  for c in columns:
-    if c in item: row.append(str(item[c]))
-    else: row.append('')
-  writer.writerow(row)
-  
+    row = []
+    for c in columns:
+        if c in item:
+            row.append(str(item[c]))
+        else:
+            row.append('')
+    writer.writerow(row)

@@ -4,40 +4,40 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """enum-like type"""
 
-import types, string, exceptions
-
-class EnumException(exceptions.Exception):
+class EnumException(Exception):
     pass
 
 class Enumeration:
-    def __init__(self, name, enumList):
+    def __init__(self, name, enum_list):
         self.__doc__ = name
-        lookup = { }
-        reverseLookup = { }
+        lookup = {}
+        reverse_lookup = {}
         i = 0
-        uniqueNames = [ ]
-        uniqueValues = [ ]
-        for x in enumList:
-            if type(x) == types.TupleType:
+        unique_names = []
+        unique_values = []
+        for x in enum_list:
+            if isinstance(x, tuple):
                 x, i = x
-            if type(x) != types.StringType:
-                raise EnumException, "enum name is not a string: " + x
-            if type(i) != types.IntType:
-                raise EnumException, "enum value is not an integer: " + i
-            if x in uniqueNames:
-                raise EnumException, "enum name is not unique: " + x
-            if i in uniqueValues:
-                raise EnumException, "enum value is not unique for " + x
-            uniqueNames.append(x)
-            uniqueValues.append(i)
+            if not isinstance(x, str):
+                raise EnumException("enum name is not a string: {}".format(x))
+            if not isinstance(i, int):
+                raise EnumException("enum value is not an integer: {}".format(i))
+            if x in unique_names:
+                raise EnumException("enum name is not unique: {}".format(x))
+            if i in unique_values:
+                raise EnumException("enum value is not unique for {}".format(x))
+            unique_names.append(x)
+            unique_values.append(i)
             lookup[x] = i
-            reverseLookup[i] = x
+            reverse_lookup[i] = x
             i = i + 1
         self.lookup = lookup
-        self.reverseLookup = reverseLookup
+        self.reverse_lookup = reverse_lookup
+
     def __getattr__(self, attr):
-        if not self.lookup.has_key(attr):
+        if attr not in self.lookup:
             raise AttributeError
         return self.lookup[attr]
+
     def whatis(self, value):
-        return self.reverseLookup[value]
+        return self.reverse_lookup[value]

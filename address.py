@@ -9,39 +9,43 @@ NOTE: I think you have to shutdown the Bitcoin client to
 successfully read addr.dat..."""
 
 import logging
-from operator import itemgetter
 import sys
-import time
 
-from bsddb3.db import *  # pip3 install bsddb3
+from bsddb3.db import (  # pip3 install bsddb3
+    DB,
+    DBError,
+    DB_BTREE,
+    DB_THREAD,
+    DB_RDONLY,
+)
 
-from BCDataStream import *
-from base58 import public_key_to_bc_address
-from util import short_hex
-from deserialize import *
+from BCDataStream import BCDataStream
+from deserialize import parse_address, deserialize_address
 
 def dump_addresses(db_env):
-  db = DB(db_env)
-  try:
-    r = db.open("addr.dat", "main", DB_BTREE, DB_THREAD|DB_RDONLY)
-  except DBError:
-    r = True
+    db = DB(db_env)
+    try:
+        r = db.open("addr.dat", "main", DB_BTREE, DB_THREAD | DB_RDONLY)
+    except DBError:
+        r = True
 
-  if r is not None:
-    logging.error("Couldn't open addr.dat/main. Try quitting Bitcoin and running this again.")
-    sys.exit(1)
+    if r is not None:
+        logging.error("Couldn't open addr.dat/main. Try quitting Bitcoin and running this again.")
+        sys.exit(1)
 
-  kds = BCDataStream()
-  vds = BCDataStream()
+    kds = BCDataStream()
+    vds = BCDataStream()
 
-  for (key, value) in db.items():
-    kds.clear(); kds.write(key)
-    vds.clear(); vds.write(value)
+    for (key, value) in db.items():
+        kds.clear()
+        kds.write(key)
+        vds.clear()
+        vds.write(value)
 
-    type = kds.read_string()
+        type = kds.read_string()
 
-    if type == "addr":
-      d = parse_CAddress(vds)
-      print(deserialize_CAddress(d))
+        if type == "addr":
+            d = parse_address(vds)
+            print(deserialize_address(d))
 
-  db.close()
+    db.close()
