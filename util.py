@@ -20,14 +20,11 @@ from bsddb3.db import (  # pip3 install bsddb3
     DB_RECOVER,
 )
 
-def long_hex(bytes):
-    return bytes.encode('hex_codec')
-
-def short_hex(bytes):
-    t = bytes.encode('hex_codec')
+def short_hex(b):
+    t = b.hex()
     if len(t) < 11:
         return t
-    return t[0:4] + "..." + t[-4:]
+    return t[:7] + "..."
 
 def determine_db_dir():
     if platform.system() == "Darwin":

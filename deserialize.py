@@ -11,7 +11,7 @@ import socket
 import struct
 import time
 
-from util import short_hex, long_hex
+from util import short_hex
 
 def parse_address(vds):
     d = {}
@@ -53,9 +53,9 @@ def deserialize_txin(d, transaction_index=None, owner_keys=None):
     elif transaction_index is not None and d['prevout_hash'] in transaction_index:
         p = transaction_index[d['prevout_hash']]['txOut'][d['prevout_n']]
         result = "TxIn: value: %f" % (p['value'] / 1.0e8,)
-        result += " prev(" + long_hex(d['prevout_hash'][::-1]) + ":" + str(d['prevout_n']) + ")"
+        result += " prev(" + d['prevout_hash'][::-1].hex() + ":" + str(d['prevout_n']) + ")"
     else:
-        result = "TxIn: prev(" + long_hex(d['prevout_hash'][::-1]) + ":" + str(d['prevout_n']) + ")"
+        result = "TxIn: prev(" + d['prevout_hash'][::-1].hex() + ":" + str(d['prevout_n']) + ")"
         pk = extract_public_key(d['scriptSig'])
         result += " pubkey: " + pk
         result += " sig: " + decode_script(d['scriptSig'])

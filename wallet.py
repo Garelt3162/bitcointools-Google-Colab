@@ -26,7 +26,7 @@ from deserialize import (
     parse_setting,
 )
 from BCDataStream import BCDataStream
-from util import short_hex, long_hex
+from util import short_hex
 
 def open_wallet(db_env, writable=False):
     db = DB(db_env)
@@ -100,15 +100,14 @@ def parse_wallet(db, item_callback):
                 d['nTime'] = vds.read_int64()
                 d['otherAccount'] = vds.read_string()
                 d['comment'] = vds.read_string()
-            else:
-                print("Unknown key type: " + t)
 
             item_callback(t, d)
 
         except Exception as e:
             print("ERROR parsing wallet.dat, type %s" % t)
-            print("key data in hex: %s" % key.encode('hex_codec'))
-            print("value data in hex: %s" % value.encode('hex_codec'))
+            print("key data in hex: {}".format(key))
+            print("value data in hex: {}".format(value))
+            raise
 
 def update_wallet(db, t, data):
     """Write a single item to the wallet.
@@ -220,6 +219,7 @@ def dump_wallet(db_env, print_wallet, print_wallet_transactions, transaction_fil
                   (d['account'], d['nCreditDebit'], d['otherAccount'], time.ctime(d['nTime']), d['n'], d['comment']))
         else:
             print("Unknown key type: " + t)
+            print("value data in hex: {}".format(d["__value__"]))
 
     parse_wallet(db, item_callback)
 
@@ -230,7 +230,7 @@ def dump_wallet(db_env, print_wallet, print_wallet_transactions, transaction_fil
             if len(transaction_filter) > 0 and re.search(transaction_filter, tx_value) is None:
                 continue
 
-            print("==WalletTransaction== " + long_hex(d['tx_id'][::-1]))
+            print("==WalletTransaction== " + d['tx_id'][::-1]).hex()
             print(tx_value)
 
     db.close()
