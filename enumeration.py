@@ -1,7 +1,9 @@
+#!/usr/bin/env python3
 #
-# enum-like type
-# From the Python Cookbook, downloaded from http://code.activestate.com/recipes/67107/
-#
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+"""enum-like type"""
+
 import types, string, exceptions
 
 class EnumException(exceptions.Exception):

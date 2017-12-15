@@ -1,6 +1,9 @@
+#!/usr/bin/env python3
 #
-# Code for parsing the wallet.dat file
-#
+# Copyright (c) 2010 Gavin Andresen
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+"""Code for parsing the wallet.dat file"""
 
 from bsddb.db import *
 import logging

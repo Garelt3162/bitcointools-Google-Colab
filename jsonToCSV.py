@@ -1,9 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
-# Reads an array of JSON objects and writes out CSV-format,
-# with key names in first row.
-# Columns will be union of all keys in the objects.
-#
+# Copyright (c) 2010 Gavin Andresen
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+"""Reads an array of JSON objects and writes out CSV-format
+
+Key names are in the first row.
+Columns are a union of all keys in the objects."""
 
 import csv
 import json

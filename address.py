@@ -1,8 +1,12 @@
+#!/usr/bin/env python3
 #
-# Code for parsing the addr.dat file
-# NOTE: I think you have to shutdown the Bitcoin client to
-# successfully read addr.dat...
-#
+# Copyright (c) 2010 Gavin Andresen
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+""" Code for parsing the addr.dat file
+
+NOTE: I think you have to shutdown the Bitcoin client to
+successfully read addr.dat..."""
 
 from bsddb.db import *
 import logging

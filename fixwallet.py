@@ -1,7 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
-# Recover from a semi-corrupt wallet
-#
+# Copyright (c) 2010 Gavin Andresen
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+"""Recover from a semi-corrupt wallet."""
+
 from bsddb.db import *
 import logging
 import sys

@@ -1,7 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
-# Code for dumping the bitcoin Berkeley db files in a human-readable format
-#
+# Copyright (c) 2010 Gavin Andresen
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+"""Code for dumping the bitcoin Berkeley db files in a human-readable format."""
+
 from bsddb.db import *
 import logging
 import sys

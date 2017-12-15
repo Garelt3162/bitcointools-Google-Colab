@@ -1,6 +1,10 @@
+#!/usr/bin/env python3
 #
-# Workalike python implementation of Bitcoin's CDataStream class.
-#
+# Copyright (c) 2010 Gavin Andresen
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+""" Workalike python implementation of Bitcoin's CDataStream class."""
+
 import struct
 import StringIO
 import mmap

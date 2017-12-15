@@ -1,5 +1,8 @@
-#!/usr/bin/env python
-
+#!/usr/bin/env python3
+#
+# Copyright (c) 2010 Gavin Andresen
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """encode/decode base58 in the same way that Bitcoin does"""
 
 import math

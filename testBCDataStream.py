@@ -1,6 +1,9 @@
+#!/usr/bin/env python3
 #
-# Unit tests for BCDataStream class
-#
+# Copyright (c) 2010 Gavin Andresen
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+"""Unit tests for BCDataStream class."""
 
 import unittest
 
