@@ -42,9 +42,11 @@ def open_wallet(db_env, writable=False):
 
     return db
 
-def parse_wallet(db, item_callback):
+def parse_wallet(db):
     kds = BCDataStream()
     vds = BCDataStream()
+
+    records = []
 
     for (key, value) in db.items():
         d = {}
@@ -100,14 +102,130 @@ def parse_wallet(db, item_callback):
                 d['nTime'] = vds.read_int64()
                 d['otherAccount'] = vds.read_string()
                 d['comment'] = vds.read_string()
+            elif t == "bestblock_nomerkle":
+                d['contents'] = 'unknown'
+                # TODO parse bestblock_nomerkle correctly
+            elif t == "bestblock":
+                d['contents'] = 'unknown'
+                # TODO parse bestblock correctly
+            elif t == "minversion":
+                d['contents'] = 'unknown'
+                # TODO parse minversion correctly
+            elif t == "hdchain":
+                d['contents'] = 'unknown'
+                # TODO parse hdchain correctly
+            elif t == "keymeta":
+                d['contents'] = 'unknown'
+                # TODO parse metadata correctly
 
-            item_callback(t, d)
+            records.append(d)
 
         except Exception as e:
             print("ERROR parsing wallet.dat, type %s" % t)
             print("key data in hex: {}".format(key))
             print("value data in hex: {}".format(value))
             raise
+
+    return records
+
+def dump_wallet(db_env, print_wallet, print_wallet_transactions, transaction_filter):
+    db = open_wallet(db_env)
+
+    wallet_transactions = []
+    transaction_index = {}
+    owner_keys = {}
+
+    records = parse_wallet(db)
+
+    for d in records:
+        t = d["__type__"]
+        if t == "tx":
+            wallet_transactions.append(d)
+            transaction_index[d['tx_id']] = d
+        elif t == "key":
+            owner_keys[public_key_to_bc_address(d['public_key'])] = d['private_key']
+
+        if not print_wallet:
+            return
+        if t == "tx":
+            return
+        elif t == "name":
+            print("ADDRESS " + d['hash'] + " : " + d['name'])
+        elif t == "version":
+            print("Version: %d" % (d['version'],))
+        elif t == "setting":
+            print(d['setting'] + ": " + str(d['value']))
+        elif t == "key":
+            print("PubKey " + short_hex(d['public_key']) + " " + public_key_to_bc_address(d['public_key']) +
+                  ": PriKey " + short_hex(d['private_key']))
+        elif t == "wkey":
+            print("WPubKey 0x" + short_hex(d['public_key']) + " " + public_key_to_bc_address(d['public_key']) +
+                  ": WPriKey 0x" + short_hex(d['private_key']))
+            print(" Created: " + time.ctime(d['created']) + " Expires: " + time.ctime(d['expires']) + " Comment: " + d['comment'])
+        elif t == "defaultkey":
+            print("Default Key: 0x" + short_hex(d['key']) + " " + public_key_to_bc_address(d['key']))
+        elif t == "pool":
+            print("Change Pool key %d: %s (Time: %s)" % (d['n'], public_key_to_bc_address(d['public_key']), time.ctime(d['nTime'])))
+        elif t == "acc":
+            print("Account %s (current key: %s)" % (d['account'], public_key_to_bc_address(d['public_key'])))
+        elif t == "acentry":
+            print("Move '%s' %d (other: '%s', time: %s, entry %d) %s" %
+                  (d['account'], d['nCreditDebit'], d['otherAccount'], time.ctime(d['nTime']), d['n'], d['comment']))
+        elif t == "minversion":
+            print("minversion contents :{}".format(d['contents']))
+        elif t == "bestblock":
+            print("bestblock contents :{}".format(d['contents']))
+        elif t == "bestblock_nomerkle":
+            print("bestblock_nomerkle contents :{}".format(d['contents']))
+        elif t == "hdchain":
+            print("hdchain contents :{}".format(d['contents']))
+        elif t == "keymeta":
+            print("keymeta contents :{}".format(d['contents']))
+        else:
+            print("Unknown key type: " + t)
+            print("value data in hex: {}".format(d["__value__"]))
+
+    if print_wallet_transactions:
+        keyfunc = lambda i: i['timeReceived']
+        for d in sorted(wallet_transactions, key=keyfunc):
+            tx_value = deserialize_wallet_tx(d, transaction_index, owner_keys)
+            if len(transaction_filter) > 0 and re.search(transaction_filter, tx_value) is None:
+                continue
+
+            print("==WalletTransaction== " + d['tx_id'][::-1]).hex()
+            print(tx_value)
+
+    db.close()
+
+def dump_accounts(db_env):
+    db = open_wallet(db_env)
+
+    kds = BCDataStream()
+    vds = BCDataStream()
+
+    accounts = set()
+
+    for (key, value) in db.items():
+        kds.clear()
+        kds.write(key)
+        vds.clear()
+        vds.write(value)
+
+        t = kds.read_string()
+
+        if t == "acc":
+            accounts.add(kds.read_string())
+        elif t == "name":
+            accounts.add(vds.read_string())
+        elif t == "acentry":
+            accounts.add(kds.read_string())
+            # Note: don't need to add otheraccount, because moves are
+            # always double-entry
+
+    for name in sorted(accounts):
+        print(name)
+
+    db.close()
 
 def update_wallet(db, t, data):
     """Write a single item to the wallet.
@@ -176,94 +294,6 @@ def update_wallet(db, t, data):
     except Exception as e:
         print("ERROR writing to wallet.dat, type %s" % t)
         print("data dictionary: %r" % data)
-
-def dump_wallet(db_env, print_wallet, print_wallet_transactions, transaction_filter):
-    db = open_wallet(db_env)
-
-    wallet_transactions = []
-    transaction_index = {}
-    owner_keys = {}
-
-    def item_callback(t, d):
-        if t == "tx":
-            wallet_transactions.append(d)
-            transaction_index[d['tx_id']] = d
-        elif t == "key":
-            owner_keys[public_key_to_bc_address(d['public_key'])] = d['private_key']
-
-        if not print_wallet:
-            return
-        if t == "tx":
-            return
-        elif t == "name":
-            print("ADDRESS " + d['hash'] + " : " + d['name'])
-        elif t == "version":
-            print("Version: %d" % (d['version'],))
-        elif t == "setting":
-            print(d['setting'] + ": " + str(d['value']))
-        elif t == "key":
-            print("PubKey " + short_hex(d['public_key']) + " " + public_key_to_bc_address(d['public_key']) +
-                  ": PriKey " + short_hex(d['private_key']))
-        elif t == "wkey":
-            print("WPubKey 0x" + short_hex(d['public_key']) + " " + public_key_to_bc_address(d['public_key']) +
-                  ": WPriKey 0x" + short_hex(d['private_key']))
-            print(" Created: " + time.ctime(d['created']) + " Expires: " + time.ctime(d['expires']) + " Comment: " + d['comment'])
-        elif t == "defaultkey":
-            print("Default Key: 0x" + short_hex(d['key']) + " " + public_key_to_bc_address(d['key']))
-        elif t == "pool":
-            print("Change Pool key %d: %s (Time: %s)" % (d['n'], public_key_to_bc_address(d['public_key']), time.ctime(d['nTime'])))
-        elif t == "acc":
-            print("Account %s (current key: %s)" % (d['account'], public_key_to_bc_address(d['public_key'])))
-        elif t == "acentry":
-            print("Move '%s' %d (other: '%s', time: %s, entry %d) %s" %
-                  (d['account'], d['nCreditDebit'], d['otherAccount'], time.ctime(d['nTime']), d['n'], d['comment']))
-        else:
-            print("Unknown key type: " + t)
-            print("value data in hex: {}".format(d["__value__"]))
-
-    parse_wallet(db, item_callback)
-
-    if print_wallet_transactions:
-        keyfunc = lambda i: i['timeReceived']
-        for d in sorted(wallet_transactions, key=keyfunc):
-            tx_value = deserialize_wallet_tx(d, transaction_index, owner_keys)
-            if len(transaction_filter) > 0 and re.search(transaction_filter, tx_value) is None:
-                continue
-
-            print("==WalletTransaction== " + d['tx_id'][::-1]).hex()
-            print(tx_value)
-
-    db.close()
-
-def dump_accounts(db_env):
-    db = open_wallet(db_env)
-
-    kds = BCDataStream()
-    vds = BCDataStream()
-
-    accounts = set()
-
-    for (key, value) in db.items():
-        kds.clear()
-        kds.write(key)
-        vds.clear()
-        vds.write(value)
-
-        t = kds.read_string()
-
-        if t == "acc":
-            accounts.add(kds.read_string())
-        elif t == "name":
-            accounts.add(vds.read_string())
-        elif t == "acentry":
-            accounts.add(kds.read_string())
-            # Note: don't need to add otheraccount, because moves are
-            # always double-entry
-
-    for name in sorted(accounts):
-        print(name)
-
-    db.close()
 
 def rewrite_wallet(db_env, dest_filename, pre_put_callback=None):
     db = open_wallet(db_env)
