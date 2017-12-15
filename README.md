@@ -1,19 +1,19 @@
-### dbdump.py
+### walletdump.py
 
-Run `dbdump.py --help` for usage. Database files are opened read-only, but
+Run `walletdump.py --help` for usage. Database files are opened read-only, but
 you should back up your wallet.dat file before using this.
 
-You must quit Bitcoin before reading the wallet and peers files.
+You must quit Bitcoin before reading the wallet database file.
 
 Examples:
 
-Print out  wallet keys and transactions:
+Print out wallet keys and transactions:
 
-`dbdump.py --wallet --wallet-tx`
+`walletdump.py --wallet --wallet-tx`
 
 Print out all 'received' transactions that aren't yet spent:
 
-`dbdump.py --wallet-tx-filter='fromMe:False.*spent:False'`
+`walletdump.py --wallet-tx-filter='fromMe:False.*spent:False'`
 
 ### fixwallet.py
 

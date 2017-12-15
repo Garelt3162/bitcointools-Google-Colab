@@ -11,12 +11,13 @@ import sys
 
 from bsddb3.db import DBNoSuchFileError  # pip3 install bsddb3
 
-from address import dump_addresses
 from wallet import dump_wallet, dump_accounts
 from util import determine_db_dir, create_env
 
 def main():
     parser = optparse.OptionParser(usage="%prog [options]")
+    parser.add_option("--accounts", action="store_true", dest="dump_accounts", default="",
+                      help="Print out account names, one per line")
     parser.add_option("--datadir", dest="datadir", default=None,
                       help="Look for files here (defaults to bitcoin default)")
     parser.add_option("--wallet", action="store_true", dest="dump_wallet", default=False,
@@ -25,10 +26,6 @@ def main():
                       help="Print transactions in the wallet.dat file")
     parser.add_option("--wallet-tx-filter", action="store", dest="wallet_tx_filter", default="",
                       help="Only print transactions that match given string/regular expression")
-    parser.add_option("--accounts", action="store_true", dest="dump_accounts", default="",
-                      help="Print out account names, one per line")
-    parser.add_option("--address", action="store_true", dest="dump_addr", default=False,
-                      help="Print addresses in the addr.dat file")
     (options, args) = parser.parse_args()
 
     if options.datadir is None:
@@ -49,9 +46,6 @@ def main():
         dump_wallet(db_env, options.dump_wallet, dump_tx, options.wallet_tx_filter)
     if options.dump_accounts:
         dump_accounts(db_env)
-
-    if options.dump_addr:
-        dump_addresses(db_env)
 
     db_env.close()
 
