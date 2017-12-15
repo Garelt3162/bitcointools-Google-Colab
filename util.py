@@ -26,7 +26,7 @@ def short_hex(b):
         return t
     return t[:7] + "..."
 
-def determine_db_dir():
+def determine_datadir():
     if platform.system() == "Darwin":
         return os.path.expanduser("~/Library/Application Support/Bitcoin/")
     elif platform.system() == "Windows":
@@ -35,7 +35,7 @@ def determine_db_dir():
 
 def create_env(db_dir=None):
     if db_dir is None:
-        db_dir = determine_db_dir()
+        db_dir = determine_datadir()
     db_env = DBEnv(0)
     db_env.open(db_dir, DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_THREAD | DB_RECOVER)
     return db_env

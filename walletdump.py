@@ -12,7 +12,7 @@ import sys
 from bsddb3.db import DBNoSuchFileError  # pip3 install bsddb3
 
 from wallet import dump_wallet, dump_accounts
-from util import determine_db_dir, create_env
+from util import determine_datadir, create_env
 
 def main():
     parser = optparse.OptionParser(usage="%prog [options]")
@@ -29,14 +29,14 @@ def main():
     (options, args) = parser.parse_args()
 
     if options.datadir is None:
-        db_dir = determine_db_dir()
+        datadir = determine_datadir()
     else:
-        db_dir = options.datadir
+        datadir = options.datadir
 
     try:
-        db_env = create_env(db_dir)
+        db_env = create_env(datadir)
     except DBNoSuchFileError:
-        logging.error("Couldn't open " + db_dir)
+        logging.error("Couldn't open " + datadir)
         sys.exit(1)
 
     dump_tx = options.dump_wallet_tx
