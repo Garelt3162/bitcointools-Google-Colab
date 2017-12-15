@@ -8,10 +8,6 @@ import sys
 
 from address import dump_addresses
 from wallet import dump_wallet, dump_accounts
-from blkindex import dump_blkindex_summary
-from transaction import dump_transaction
-from transaction import dump_all_transactions
-from block import dump_block, dump_block_n, search_blocks, check_block_chain
 from util import determine_db_dir, create_env
 
 def main():
@@ -27,20 +23,8 @@ def main():
                     help="Only print transactions that match given string/regular expression")
   parser.add_option("--accounts", action="store_true", dest="dump_accounts", default="",
                     help="Print out account names, one per line")
-  parser.add_option("--blkindex", action="store_true", dest="dump_blkindex", default=False,
-                    help="Print out summary of blkindex.dat file")
-  parser.add_option("--check-block-chain", action="store_true", dest="check_chain", default=False,
-                    help="Scan back and forward through the block chain, looking for inconsistencies")
   parser.add_option("--address", action="store_true", dest="dump_addr", default=False,
                     help="Print addresses in the addr.dat file")
-  parser.add_option("--transaction", action="store", dest="dump_transaction", default=None,
-                    help="Dump a single transaction, given hex transaction id (or abbreviated id)")
-  parser.add_option("--all-transactions", action="store_true", dest="dump_all_transactions", default=False,
-                    help="Dump all transactions")
-  parser.add_option("--block", action="store", dest="dump_block", default=None,
-                    help="Dump a single block, given its hex hash (or abbreviated hex hash) OR block height")
-  parser.add_option("--search-blocks", action="store", dest="search_blocks", default=None,
-                    help="Search the block chain for blocks containing given regex pattern")
   (options, args) = parser.parse_args()
 
   if options.datadir is None:
@@ -64,30 +48,6 @@ def main():
 
   if options.dump_addr:
     dump_addresses(db_env)
-
-  if options.check_chain:
-    check_block_chain(db_env)
-
-  if options.dump_blkindex:
-    dump_blkindex_summary(db_env)
-
-  if options.dump_transaction is not None:
-    dump_transaction(db_dir, db_env, options.dump_transaction)
-
-  if options.dump_all_transactions:
-    dump_all_transactions(db_dir, db_env)
-
-  if options.dump_block is not None:
-    if len(options.dump_block) < 7: # Probably an integer...
-      try:
-        dump_block_n(db_dir, db_env, int(options.dump_block))
-      except ValueError:
-        dump_block(db_dir, db_env, options.dump_block)
-    else:
-      dump_block(db_dir, db_env, options.dump_block)
-
-  if options.search_blocks is not None:
-    search_blocks(db_dir, db_env, options.search_blocks)
 
   db_env.close()
 
