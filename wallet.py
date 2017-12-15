@@ -115,8 +115,15 @@ def parse_wallet(db):
                 d['contents'] = 'unknown'
                 # TODO parse hdchain correctly
             elif t == "keymeta":
-                d['contents'] = 'unknown'
-                # TODO parse metadata correctly
+                VERSION_WITH_HDDATA = 10
+                d['nVersion'] = vds.read_uint32()
+                d['nCreateTime'] = vds.read_int64()
+                if d['nVersion'] >= VERSION_WITH_HDDATA:
+                    d['hdKeyPath'] = vds.read_string()
+                    d['hdMasterKeyID'] = vds.read_bytes(vds.read_compact_size())
+                else:
+                    d['hdKeyPath'] = "Not HD"
+                    d['hdMasterKeyID'] = "Not HD"
 
             records.append(d)
 
@@ -180,7 +187,7 @@ def dump_wallet(db_env, print_wallet, print_wallet_transactions, transaction_fil
         elif t == "hdchain":
             print("hdchain contents :{}".format(d['contents']))
         elif t == "keymeta":
-            print("keymeta contents :{}".format(d['contents']))
+            print("keymeta: version: {}, create time: {}, HD key path: {}, HD master key: {}".format(d['nVersion'], time.ctime(d['nCreateTime']), d['hdKeyPath'], short_hex(d['hdMasterKeyID'])))
         else:
             print("Unknown key type: " + t)
             print("value data in hex: {}".format(d["__value__"]))

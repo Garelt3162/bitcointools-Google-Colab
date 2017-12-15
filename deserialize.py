@@ -157,9 +157,6 @@ def deserialize_wallet_tx(d, transaction_index=None, owner_keys=None):
     result += " fromMe:" + str(d['fromMe']) + " spent:" + str(d['spent'])
     return result
 
-def parse_key_metadata(vds):
-    pass
-
 opcodes = Enumeration("Opcodes", [
     ("OP_0", 0), ("OP_PUSHDATA1", 76), "OP_PUSHDATA2", "OP_PUSHDATA4", "OP_1NEGATE", "OP_RESERVED",
     "OP_1", "OP_2", "OP_3", "OP_4", "OP_5", "OP_6", "OP_7",
