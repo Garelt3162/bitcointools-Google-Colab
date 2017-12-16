@@ -13,20 +13,21 @@ import time
 from bsddb3.db import (  # pip3 install bsddb3
     DB,
     DBError,
+    DBNoSuchFileError,
     DB_BTREE,
     DB_CREATE,
-    DB_THREAD,
     DB_RDONLY,
+    DB_THREAD,
 )
 
 from base58 import public_key_to_bc_address, bc_address_to_hash_160, hash_160
 from deserialize import (
-    parse_wallet_tx,
     deserialize_wallet_tx,
     parse_setting,
+    parse_wallet_tx,
 )
 from BCDataStream import BCDataStream
-from util import short_hex
+from util import create_env, short_hex
 
 def open_wallet(db_env, writable=False):
     db = DB(db_env)
@@ -143,7 +144,13 @@ def parse_wallet(db):
 
     return records
 
-def dump_wallet(db_env, print_wallet, print_wallet_transactions, transaction_filter):
+def dump_wallet(datadir, print_wallet, print_wallet_transactions, transaction_filter):
+    try:
+        db_env = create_env(datadir)
+    except DBNoSuchFileError:
+        logging.error("Couldn't open " + datadir)
+        sys.exit(1)
+
     db = open_wallet(db_env)
 
     wallet_transactions = []
@@ -217,7 +224,15 @@ def dump_wallet(db_env, print_wallet, print_wallet_transactions, transaction_fil
 
     db.close()
 
-def dump_accounts(db_env):
+    db_env.close()
+
+def dump_accounts(datadir):
+    try:
+        db_env = create_env(datadir)
+    except DBNoSuchFileError:
+        logging.error("Couldn't open " + datadir)
+        sys.exit(1)
+
     db = open_wallet(db_env)
 
     kds = BCDataStream()
@@ -246,6 +261,8 @@ def dump_accounts(db_env):
         print(name)
 
     db.close()
+
+    db_env.close()
 
 def update_wallet(db, t, data):
     """Write a single item to the wallet.
