@@ -103,24 +103,32 @@ def parse_wallet(db):
                 d['otherAccount'] = vds.read_string()
                 d['comment'] = vds.read_string()
             elif t == "bestblock_nomerkle":
-                d['contents'] = 'unknown'
-                # TODO parse bestblock_nomerkle correctly
+                d['nVersion'] = vds.read_uint32()
+                d['vHave'] = []
+                for block in range(vds.read_compact_size()):
+                    d['vHave'].append(vds.read_bytes(32).hex())
             elif t == "bestblock":
-                d['contents'] = 'unknown'
-                # TODO parse bestblock correctly
+                d['nVersion'] = vds.read_uint32()
+                d['vHave'] = []
+                for block in range(vds.read_compact_size()):
+                    d['vHave'].append(vds.read_bytes(32).hex())
             elif t == "minversion":
-                d['contents'] = 'unknown'
-                # TODO parse minversion correctly
+                d['nVersion'] = vds.read_uint32()
             elif t == "hdchain":
-                d['contents'] = 'unknown'
-                # TODO parse hdchain correctly
+                VERSION_HD_CHAIN_SPLIT = 2
+                d['nVersion'] = vds.read_uint32()
+                d['nExternalChainCounter'] = vds.read_uint32()
+                d['masterKeyID'] = vds.read_bytes(20).hex()
+                d['nInternalChainCounter'] = "No internal chain"
+                if d['nVersion'] >= VERSION_HD_CHAIN_SPLIT:
+                    d['nInternalChainCounter'] = vds.read_uint32()
             elif t == "keymeta":
                 VERSION_WITH_HDDATA = 10
                 d['nVersion'] = vds.read_uint32()
                 d['nCreateTime'] = vds.read_int64()
                 if d['nVersion'] >= VERSION_WITH_HDDATA:
                     d['hdKeyPath'] = vds.read_string()
-                    d['hdMasterKeyID'] = vds.read_bytes(vds.read_compact_size())
+                    d['hdMasterKeyID'] = vds.read_bytes(20).hex()
                 else:
                     d['hdKeyPath'] = "Not HD"
                     d['hdMasterKeyID'] = "Not HD"
@@ -157,14 +165,13 @@ def dump_wallet(db_env, print_wallet, print_wallet_transactions, transaction_fil
         if t == "tx":
             return
         elif t == "name":
-            print("ADDRESS " + d['hash'] + " : " + d['name'])
+            print("address {} : {}".format(d['hash'], d['name']))
         elif t == "version":
-            print("Version: %d" % (d['version'],))
+            print("version: {}".format(d['version']))
         elif t == "setting":
-            print(d['setting'] + ": " + str(d['value']))
+            print("setting {}: {}".format(d['setting'], str(d['value'])))
         elif t == "key":
-            print("PubKey " + short_hex(d['public_key']) + " " + public_key_to_bc_address(d['public_key']) +
-                  ": PriKey " + short_hex(d['private_key']))
+            print("Public key: {}, address: {}, private key: {}".format(d['public_key'].hex(), public_key_to_bc_address(d['public_key']), short_hex(d['private_key'])))
         elif t == "wkey":
             print("WPubKey 0x" + short_hex(d['public_key']) + " " + public_key_to_bc_address(d['public_key']) +
                   ": WPriKey 0x" + short_hex(d['private_key']))
@@ -179,15 +186,23 @@ def dump_wallet(db_env, print_wallet, print_wallet_transactions, transaction_fil
             print("Move '%s' %d (other: '%s', time: %s, entry %d) %s" %
                   (d['account'], d['nCreditDebit'], d['otherAccount'], time.ctime(d['nTime']), d['n'], d['comment']))
         elif t == "minversion":
-            print("minversion contents :{}".format(d['contents']))
+            print("minversion: {}".format(d['nVersion']))
         elif t == "bestblock":
-            print("bestblock contents :{}".format(d['contents']))
+            if d['vHave']:
+                best_block = d['vHave'][0]
+            else:
+                best_block = "empty"
+            print("bestblock: version:{}, bestblock hash: {}".format(d['nVersion'], best_block))
         elif t == "bestblock_nomerkle":
-            print("bestblock_nomerkle contents :{}".format(d['contents']))
+            if d['vHave']:
+                best_block = d['vHave'][0]
+            else:
+                best_block = "empty"
+            print("bestblock_nomerkle: version:{}, bestblock hash: {}".format(d['nVersion'], best_block))
         elif t == "hdchain":
-            print("hdchain contents :{}".format(d['contents']))
+            print("hdchain: version: {}, external chain counter:{}, master key id: {}, internal chain counter: {}".format(d['nVersion'], d['nExternalChainCounter'], d['masterKeyID'], d['nInternalChainCounter']))
         elif t == "keymeta":
-            print("keymeta: version: {}, create time: {}, HD key path: {}, HD master key: {}".format(d['nVersion'], time.ctime(d['nCreateTime']), d['hdKeyPath'], short_hex(d['hdMasterKeyID'])))
+            print("keymeta: version: {}, create time: {}, HD key path: {}, HD master key: {}".format(d['nVersion'], time.ctime(d['nCreateTime']), d['hdKeyPath'], d['hdMasterKeyID']))
         else:
             print("Unknown key type: " + t)
             print("value data in hex: {}".format(d["__value__"]))

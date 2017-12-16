@@ -24,7 +24,7 @@ def short_hex(b):
     t = b.hex()
     if len(t) < 11:
         return t
-    return t[:7] + "..."
+    return "{}...{}".format(t[:4], t[-3:])
 
 def determine_datadir():
     if platform.system() == "Darwin":
