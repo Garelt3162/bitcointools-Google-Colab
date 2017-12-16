@@ -90,6 +90,13 @@ class BCDataStream(object):
     def read_uint64(self):
         return self._read_num('<Q')
 
+    def read_uint256(self):
+        r = 0
+        for i in range(8):
+            t = self._read_num('<I')
+            r += t << (i * 32)
+        return r
+
     def write_boolean(self, val):
         return self.write(chr(1) if val else chr(0))
 

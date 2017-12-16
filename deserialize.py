@@ -23,6 +23,19 @@ def parse_address(vds):
     d['port'] = vds.read_uint16()
     return d
 
+def parse_magic(ds):
+    magic = ds.read_bytes(4)
+    if magic == b'\xf9\xbe\xb4\xd9':
+        network = "mainnet"
+    elif magic == b'\x0b\x11\x09\x07':
+        network = "testnet"
+    elif magic == b'\xfa\xbf\xb5\xda':
+        network = "regtest"
+    else:
+        network = "unknown"
+
+    return magic, network
+
 def deserialize_address(d):
     return d['ip'] + ":" + str(d['port']) + " (lastseen: %s)" % (time.ctime(d['nTime']),)
 
