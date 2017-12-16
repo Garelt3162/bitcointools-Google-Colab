@@ -29,6 +29,31 @@ from deserialize import (
 from BCDataStream import BCDataStream
 from util import create_env, short_hex
 
+class Wallet():
+    """Represents a wallet"""
+
+    def __init__(self, datadir):
+
+        try:
+            self.db_env = create_env(datadir)
+        except DBNoSuchFileError:
+            logging.error("Couldn't open " + datadir)
+            sys.exit(1)
+
+        self.db = open_wallet(self.db_env)
+
+        self.wallet_transactions = []
+        self.transaction_index = {}
+        self.owner_keys = {}
+
+        self.records = parse_wallet(self.db)
+
+    def close(self):
+        """Close the database and database environment."""
+        self.db.close()
+
+        self.db_env.close()
+
 def open_wallet(db_env, writable=False):
     db = DB(db_env)
     flags = DB_THREAD | (DB_CREATE if writable else DB_RDONLY)
@@ -144,28 +169,15 @@ def parse_wallet(db):
 
     return records
 
-def dump_wallet(datadir, print_wallet, print_wallet_transactions, transaction_filter):
-    try:
-        db_env = create_env(datadir)
-    except DBNoSuchFileError:
-        logging.error("Couldn't open " + datadir)
-        sys.exit(1)
+def dump_wallet(wallet, print_wallet, print_wallet_transactions, transaction_filter):
 
-    db = open_wallet(db_env)
-
-    wallet_transactions = []
-    transaction_index = {}
-    owner_keys = {}
-
-    records = parse_wallet(db)
-
-    for d in records:
+    for d in wallet.records:
         t = d["__type__"]
         if t == "tx":
-            wallet_transactions.append(d)
-            transaction_index[d['tx_id']] = d
+            wallet.wallet_transactions.append(d)
+            wallet.transaction_index[d['tx_id']] = d
         elif t == "key":
-            owner_keys[public_key_to_bc_address(d['public_key'])] = d['private_key']
+            wallet.owner_keys[public_key_to_bc_address(d['public_key'])] = d['private_key']
 
         if not print_wallet:
             return
@@ -214,17 +226,14 @@ def dump_wallet(datadir, print_wallet, print_wallet_transactions, transaction_fi
 
     if print_wallet_transactions:
         keyfunc = lambda i: i['timeReceived']
-        for d in sorted(wallet_transactions, key=keyfunc):
-            tx_value = deserialize_wallet_tx(d, transaction_index, owner_keys)
+        for d in sorted(wallet.wallet_transactions, key=keyfunc):
+            tx_value = deserialize_wallet_tx(d, wallet.transaction_index, wallet.owner_keys)
             if len(transaction_filter) > 0 and re.search(transaction_filter, tx_value) is None:
                 continue
 
             print("==WalletTransaction== " + d['tx_id'][::-1]).hex()
             print(tx_value)
 
-    db.close()
-
-    db_env.close()
 
 def dump_accounts(datadir):
     try:

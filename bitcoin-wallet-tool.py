@@ -7,7 +7,7 @@
 
 import optparse
 
-from wallet import dump_wallet, dump_accounts
+from wallet import dump_wallet, dump_accounts, Wallet
 from util import determine_datadir
 
 def main():
@@ -29,13 +29,17 @@ def main():
     else:
         datadir = options.datadir
 
+    wallet = Wallet(datadir)
+
     dump_tx = options.dump_wallet_tx
     if len(options.wallet_tx_filter) > 0:
         dump_tx = True
     if options.dump_wallet or dump_tx:
-        dump_wallet(datadir, options.dump_wallet, dump_tx, options.wallet_tx_filter)
+        dump_wallet(wallet, options.dump_wallet, dump_tx, options.wallet_tx_filter)
     if options.dump_accounts:
-        dump_accounts(datadir)
+        dump_accounts(wallet)
+
+    wallet.close()
 
 if __name__ == '__main__':
     main()
