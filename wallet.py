@@ -165,7 +165,7 @@ def dump_wallet(db_env, print_wallet, print_wallet_transactions, transaction_fil
         if t == "tx":
             return
         elif t == "name":
-            print("address {} : {}".format(d['hash'], d['name']))
+            print("address {}: {}".format(d['hash'], d['name']))
         elif t == "version":
             print("version: {}".format(d['version']))
         elif t == "setting":
@@ -173,18 +173,16 @@ def dump_wallet(db_env, print_wallet, print_wallet_transactions, transaction_fil
         elif t == "key":
             print("Public key: {}, address: {}, private key: {}".format(d['public_key'].hex(), public_key_to_bc_address(d['public_key']), short_hex(d['private_key'])))
         elif t == "wkey":
-            print("WPubKey 0x" + short_hex(d['public_key']) + " " + public_key_to_bc_address(d['public_key']) +
-                  ": WPriKey 0x" + short_hex(d['private_key']))
-            print(" Created: " + time.ctime(d['created']) + " Expires: " + time.ctime(d['expires']) + " Comment: " + d['comment'])
+            print("Wallet PubKey 0x{}, address: {}, private key: 0x{}".format(short_hex(d['public_key']), public_key_to_bc_address(d['public_key']), short_hex(d['private_key'])))
+            print("Created: {}, expires: {}, comment: {}".format(time.ctime(d['created']), time.ctime(d['expires']), d['comment']))
         elif t == "defaultkey":
-            print("Default Key: 0x" + short_hex(d['key']) + " " + public_key_to_bc_address(d['key']))
+            print("Default Key: 0x{}, address: {}".format(short_hex(d['key']), public_key_to_bc_address(d['key'])))
         elif t == "pool":
-            print("Change Pool key %d: %s (Time: %s)" % (d['n'], public_key_to_bc_address(d['public_key']), time.ctime(d['nTime'])))
+            print("Pool key i{}: {}, create time: {})".format(d['n'], public_key_to_bc_address(d['public_key']), time.ctime(d['nTime'])))
         elif t == "acc":
-            print("Account %s (current key: %s)" % (d['account'], public_key_to_bc_address(d['public_key'])))
+            print("Account: {}, current key: {}".format(d['account'], public_key_to_bc_address(d['public_key'])))
         elif t == "acentry":
-            print("Move '%s' %d (other: '%s', time: %s, entry %d) %s" %
-                  (d['account'], d['nCreditDebit'], d['otherAccount'], time.ctime(d['nTime']), d['n'], d['comment']))
+            print("Move {} {} (other: '{}', time: {}, entry {}) {}".format((d['account'], d['nCreditDebit'], d['otherAccount'], time.ctime(d['nTime']), d['n'], d['comment'])))
         elif t == "minversion":
             print("minversion: {}".format(d['nVersion']))
         elif t == "bestblock":
