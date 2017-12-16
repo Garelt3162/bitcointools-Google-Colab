@@ -3,7 +3,7 @@
 # Copyright (c) 2010 Gavin Andresen
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
-"""Code for dumping the bitcoin Berkeley db files in a human-readable format."""
+"""Code for dumping a bitcoind wallet.dat file in a human-readable format."""
 
 import logging
 import optparse

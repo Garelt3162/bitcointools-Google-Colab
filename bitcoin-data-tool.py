@@ -3,7 +3,7 @@
 # Copyright (c) 2010 Gavin Andresen
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
-"""Code for dumping the peers.dat in a human-readable format."""
+"""Code for dumping bitcoind datadir files in a human-readable format."""
 
 import optparse
 import os.path
@@ -15,6 +15,8 @@ def main():
     parser = optparse.OptionParser(usage="%prog [options]")
     parser.add_option("--datadir", dest="datadir", default=None,
                       help="Look for files here (defaults to bitcoin default)")
+    parser.add_option("--peers", action="store_true", default=False,
+                      help="Print out contents of the peers.dat file")
     (options, args) = parser.parse_args()
 
     if options.datadir is None:
@@ -22,7 +24,8 @@ def main():
     else:
         datadir = options.datadir
 
-    dump_peers(datadir)
+    if options.peers:
+        dump_peers(datadir)
 
 def dump_peers(datadir):
 
