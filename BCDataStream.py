@@ -54,6 +54,14 @@ class BCDataStream(object):
 
         return self.read_bytes(length).decode('utf-8')
 
+    def read_string_vector(self):
+        n = self.read_compact_size()
+        r = []
+        for i in range(n):
+            t = self.read_string()
+            r.append(t)
+        return r
+
     def write_string(self, string):
         # Length-encoded as with read-string
         self.write_compact_size(len(string))
@@ -68,6 +76,9 @@ class BCDataStream(object):
             raise SerializationError("attempt to read past end of buffer")
 
         return ''
+
+    def peep_byte(self):
+        return self.input[self.read_cursor:self.read_cursor + 1]
 
     def read_boolean(self):
         return self.read_bytes(1)[0] != chr(0)

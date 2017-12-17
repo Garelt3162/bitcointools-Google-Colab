@@ -23,7 +23,6 @@ from bsddb3.db import (  # pip3 install bsddb3
 from base58 import public_key_to_bc_address, bc_address_to_hash_160, hash_160
 from deserialize import (
     deserialize_wallet_tx,
-    parse_setting,
     parse_wallet_tx,
 )
 from BCDataStream import BCDataStream
@@ -38,10 +37,12 @@ class Wallet():
     def __init__(self, datadir):
         self.version = 0
         self.minimum_version = 0
+        self.orderposnext = 0
         self.wallet_transactions = []
         self.transaction_index = {}
         self.owner_keys = {}
         self.records = []
+        self.keys = {}
 
         try:
             self.db_env = create_env(datadir)
@@ -55,7 +56,12 @@ class Wallet():
 
     def __repr__(self):
         ret = "version: {}\n".format(self.version)
-        ret += "minimum_version: {}".format(self.minimum_version)
+        ret += "minimum_version: {}\n".format(self.minimum_version)
+        if self.keys:
+            ret += "keys:\n"
+            for pub_key, priv_key in self.keys.items():
+                ret += "    pub_key:{}, address:{}, priv_key:{}o\n".format(pub_key.hex(), public_key_to_bc_address(pub_key), short_hex(priv_key))
+        ret += "orderposnext: {}\n".format(self.orderposnext)
 
         return ret
 
@@ -99,12 +105,18 @@ class Wallet():
                 elif t == "version":
                     self.version = vds.read_uint32()
                     continue
-                elif t == "setting":
-                    d['setting'] = kds.read_string()
-                    d['value'] = parse_setting(d['setting'], vds)
+                elif t == "minversion":
+                    self.minimum_version = vds.read_uint32()
+                    continue
+                elif t == "orderposnext":
+                    self.orderposnext = vds.read_int64()
+                    continue
                 elif t == "key":
-                    d['public_key'] = kds.read_bytes(kds.read_compact_size())
-                    d['private_key'] = vds.read_bytes(vds.read_compact_size())
+                    public_key = kds.read_bytes(kds.read_compact_size())
+                    private_key = vds.read_bytes(vds.read_compact_size())
+                    self.keys[public_key] = private_key
+                    self.owner_keys[public_key_to_bc_address(public_key)] = private_key
+                    continue
                 elif t == "wkey":
                     d['public_key'] = kds.read_bytes(kds.read_compact_size())
                     d['private_key'] = vds.read_bytes(vds.read_compact_size())
@@ -118,6 +130,9 @@ class Wallet():
                     d['nVersion'] = vds.read_int32()
                     d['nTime'] = vds.read_int64()
                     d['public_key'] = vds.read_bytes(vds.read_compact_size())
+                elif t == "purpose":
+                    d['address'] = kds.read_string()
+                    d['purpose'] = vds.read_string()
                 elif t == "acc":
                     d['account'] = kds.read_string()
                     d['nVersion'] = vds.read_int32()
@@ -140,9 +155,6 @@ class Wallet():
                     d['vHave'] = []
                     for block in range(vds.read_compact_size()):
                         d['vHave'].append(vds.read_bytes(32).hex())
-                elif t == "minversion":
-                    self.minimum_version = vds.read_uint32()
-                    continue
                 elif t == "hdchain":
                     d['nVersion'] = vds.read_uint32()
                     d['nExternalChainCounter'] = vds.read_uint32()
@@ -164,8 +176,8 @@ class Wallet():
 
             except Exception as e:
                 print("ERROR parsing wallet.dat, type %s" % t)
-                print("key data in hex: {}".format(key))
-                print("value data in hex: {}".format(value))
+                print("key data in hex: {}".format(key.hex()))
+                print("value data in hex: {}".format(value.hex()))
                 raise
 
     def close(self):
@@ -183,19 +195,15 @@ def dump_wallet(wallet, print_wallet, print_wallet_transactions, transaction_fil
         if t == "tx":
             wallet.wallet_transactions.append(d)
             wallet.transaction_index[d['tx_id']] = d
-        elif t == "key":
-            wallet.owner_keys[public_key_to_bc_address(d['public_key'])] = d['private_key']
 
         if not print_wallet:
             return
         if t == "tx":
-            return
+            continue
         elif t == "name":
             print("address {}: {}".format(d['hash'], d['name']))
         elif t == "setting":
             print("setting {}: {}".format(d['setting'], str(d['value'])))
-        elif t == "key":
-            print("Public key: {}, address: {}, private key: {}".format(d['public_key'].hex(), public_key_to_bc_address(d['public_key']), short_hex(d['private_key'])))
         elif t == "wkey":
             print("Wallet PubKey 0x{}, address: {}, private key: 0x{}".format(short_hex(d['public_key']), public_key_to_bc_address(d['public_key']), short_hex(d['private_key'])))
             print("Created: {}, expires: {}, comment: {}".format(time.ctime(d['created']), time.ctime(d['expires']), d['comment']))
@@ -207,6 +215,8 @@ def dump_wallet(wallet, print_wallet, print_wallet_transactions, transaction_fil
             print("Account: {}, current key: {}".format(d['account'], public_key_to_bc_address(d['public_key'])))
         elif t == "acentry":
             print("Move {} {} (other: '{}', time: {}, entry {}) {}".format((d['account'], d['nCreditDebit'], d['otherAccount'], time.ctime(d['nTime']), d['n'], d['comment'])))
+        elif t == "purpose":
+            print("purpose: Address: {}, purpose: {}".format(d['address'], d['purpose']))
         elif t == "bestblock":
             if d['vHave']:
                 best_block = d['vHave'][0]

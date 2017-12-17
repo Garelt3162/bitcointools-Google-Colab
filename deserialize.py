@@ -11,6 +11,7 @@ import socket
 import struct
 import time
 
+from BCDataStream import SerializationError
 from util import short_hex
 
 def parse_address(vds):
@@ -39,19 +40,8 @@ def parse_magic(ds):
 def deserialize_address(d):
     return d['ip'] + ":" + str(d['port']) + " (lastseen: %s)" % (time.ctime(d['nTime']),)
 
-def parse_setting(setting, vds):
-    if setting[0] == "f":  # flag (boolean) settings
-        return str(vds.read_boolean())
-    elif setting[0:4] == "addr":  # CAddress
-        d = parse_address(vds)
-        return deserialize_address(d)
-    elif setting == "nTransactionFee":
-        return vds.read_int64()
-    elif setting == "nLimitProcessors":
-        return vds.read_int32()
-    return 'unknown setting'
-
 def parse_txin(vds):
+    # import pdb; pdb.set_trace()
     d = {}
     d['prevout_hash'] = vds.read_bytes(32)
     d['prevout_n'] = vds.read_uint32()
@@ -98,14 +88,23 @@ def parse_tx(vds):
     d = {}
     start = vds.read_cursor
     d['version'] = vds.read_int32()
+    segwit = False
+    if int.from_bytes(vds.peep_byte(), 'big') == 0:
+        if int.from_bytes(vds.read_bytes(2), 'big') != 1:
+            raise SerializationError("Segwit flag not set to 1")
+        segwit = True
     n_vin = vds.read_compact_size()
     d['txIn'] = []
     for i in range(n_vin):
-        d['txIn'].append(deserialize_txin(vds))
+        d['txIn'].append(parse_txin(vds))
     n_vout = vds.read_compact_size()
     d['txOut'] = []
     for i in range(n_vout):
         d['txOut'].append(parse_txout(vds))
+    if segwit:
+        d['script_witnesses'] = []
+        for i in range(n_vin):
+            d['script_witnesses'].append(vds.read_string_vector())
     d['lockTime'] = vds.read_uint32()
     end = vds.read_cursor
     hash = hashlib.sha256(hashlib.sha256(vds.input[start:end]).digest()).hexdigest()
