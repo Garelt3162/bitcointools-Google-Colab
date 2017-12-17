@@ -24,7 +24,7 @@ def parse_address(vds):
     d['port'] = vds.read_uint16()
     return d
 
-def parse_magic(ds):
+def deserialize_magic(ds):
     magic = ds.read_bytes(4)
     if magic == b'\xf9\xbe\xb4\xd9':
         network = "mainnet"
