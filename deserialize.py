@@ -14,6 +14,155 @@ import time
 from BCDataStream import SerializationError
 from util import short_hex
 
+def deser_boolean(f):
+    return struct.unpack("?", f.read(1))[0]
+
+def ser_boolean(l):
+    return struct.pack("?", l)
+
+def deser_int8(f):
+    return struct.unpack("<b", f.read(1))[0]
+
+def ser_int8(l):
+    return struct.pack("<b", l)
+
+def deser_uint8(f):
+    return struct.unpack("<B", f.read(1))[0]
+
+def ser_uint8(l, val):
+    return struct.pack("<B", l)
+
+def deser_int16(f):
+    return struct.unpack("<h", f.read(2))[0]
+
+def ser_int16(l):
+    return struct.pack("<h", l)
+
+def deser_uint16(f):
+    return struct.unpack("<H", f.read(2))[0]
+
+def ser_uint16(l, val):
+    return struct.pack("<H", l)
+
+def deser_int32(f):
+    return struct.unpack("<i", f.read(4))[0]
+
+def ser_int32(l, val):
+    return struct.pack("<i", l)
+
+def deser_uint32(f):
+    return struct.unpack("<I", f.read(4))[0]
+
+def ser_uint32(l, val):
+    return struct.pack("<I", l)
+
+def deser_int64(f):
+    return struct.unpack("<q", f.read(8))[0]
+
+def ser_int64(l, val):
+    return struct.pack("<q", l)
+
+def deser_uint64(f):
+    return struct.unpack("<Q", f.read(8))[0]
+
+def ser_uint64(l, val):
+    return struct.pack("<Q", l)
+
+def deser_uint256(f):
+    r = 0
+    for i in range(8):
+        t = struct.unpack("<I", f.read(4))[0]
+        r += t << (i * 32)
+    return r
+
+def ser_uint256(u):
+    rs = b""
+    for i in range(8):
+        rs += struct.pack("<I", u & 0xFFFFFFFF)
+        u >>= 32
+    return rs
+
+def deser_compact_size(f):
+    nit = struct.unpack("<B", f.read(1))[0]
+    if nit == 253:
+        nit = struct.unpack("<H", f.read(2))[0]
+    elif nit == 254:
+        nit = struct.unpack("<I", f.read(4))[0]
+    elif nit == 255:
+        nit = struct.unpack("<Q", f.read(8))[0]
+    return nit
+
+def ser_compact_size(l):
+    r = b""
+    if l < 253:
+        r = struct.pack("B", l)
+    elif l < 0x10000:
+        r = struct.pack("<BH", 253, l)
+    elif l < 0x100000000:
+        r = struct.pack("<BI", 254, l)
+    else:
+        r = struct.pack("<BQ", 255, l)
+    return r
+
+def deser_string(f):
+    nit = deser_compact_size(f)
+    return f.read(nit)
+
+def ser_string(s):
+    return ser_compact_size(len(s)) + s
+
+def deser_vector(f, c):
+    nit = deser_compact_size(f)
+    r = []
+    for i in range(nit):
+        t = c()
+        t.deserialize(f)
+        r.append(t)
+    return r
+
+def ser_vector(l, ser_function_name=None):
+    """Serialize a vector object.
+
+    ser_function_name: Allow for an alternate serialization function on the
+    entries in the vector."""
+
+    r = ser_compact_size(len(l))
+    for i in l:
+        if ser_function_name:
+            r += getattr(i, ser_function_name)()
+        else:
+            r += i.serialize()
+    return r
+
+def deser_uint256_vector(f):
+    nit = deser_compact_size(f)
+    r = []
+    for i in range(nit):
+        t = deser_uint256(f)
+        r.append(t)
+    return r
+
+def ser_uint256_vector(l):
+    r = ser_compact_size(len(l))
+    for i in l:
+        r += ser_uint256(i)
+    return r
+
+def deser_string_vector(f):
+    nit = deser_compact_size(f)
+    r = []
+    for i in range(nit):
+        t = deser_string(f)
+        r.append(t)
+    return r
+
+def ser_string_vector(l):
+    r = ser_compact_size(len(l))
+    for sv in l:
+        r += ser_string(sv)
+    return r
+
+
 def parse_address(vds):
     d = {}
     d['nVersion'] = vds.read_int32()
@@ -24,8 +173,8 @@ def parse_address(vds):
     d['port'] = vds.read_uint16()
     return d
 
-def deserialize_magic(ds):
-    magic = ds.read_bytes(4)
+def deserialize_magic(f):
+    magic = f.read(4)
     if magic == b'\xf9\xbe\xb4\xd9':
         network = "mainnet"
     elif magic == b'\x0b\x11\x09\x07':

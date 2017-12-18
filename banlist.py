@@ -6,9 +6,8 @@
 """Deserialize banlist.dat file."""
 import os.path
 
-from BCDataStream import BCDataStream
 from datastructures import Ban
-from deserialize import deserialize_magic
+import deserialize as des
 
 class Banlist():
     """Represents contents of banlist.dat file."""
@@ -18,8 +17,8 @@ class Banlist():
         self.banmap = {}
 
     def deserialize(self, f):
-        self.magic, self.network = deserialize_magic(f)
-        bl_len = f.read_compact_size()
+        self.magic, self.network = des.deserialize_magic(f)
+        bl_len = des.deser_compact_size(f)
 
         for _ in range(bl_len):
             ban = Ban()
@@ -37,15 +36,11 @@ class Banlist():
         return ret
 
 def dump_banlist(datadir):
+    banlist = Banlist()
+
     banlist_file = os.path.join(datadir, "banlist.dat")
 
-    banlist_ds = BCDataStream()
-    banlist_ds.clear()
-
     with open(banlist_file, "rb") as f:
-        banlist_ds.write(f.read())
-
-    banlist = Banlist()
-    banlist.deserialize(banlist_ds)
+        banlist.deserialize(f)
 
     print(banlist)

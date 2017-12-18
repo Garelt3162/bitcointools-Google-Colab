@@ -6,9 +6,8 @@
 """Deserialize peers.dat file."""
 import os.path
 
-from BCDataStream import BCDataStream
 from datastructures import AddrInfo
-from deserialize import deserialize_magic
+import deserialize as des
 
 class Peers():
     """Represents contents of peers.dat file."""
@@ -24,14 +23,14 @@ class Peers():
         self.tried_table = []
 
     def deserialize(self, f):
-        self.magic, self.network = deserialize_magic(f)
-        self.version = int.from_bytes(f.read_bytes(1), 'big')
-        self.flag = f.read_bytes(1)
+        self.magic, self.network = des.deserialize_magic(f)
+        self.version = des.deser_uint8(f)
+        self.flag = f.read(1)
         assert self.flag == b'\x20'
-        self.key = f.read_bytes(32)
-        self.new = f.read_int32()
-        self.tried = f.read_int32()
-        self.buckets = f.read_int32() ^ 1 << 30
+        self.key = f.read(32)
+        self.new = des.deser_int32(f)
+        self.tried = des.deser_int32(f)
+        self.buckets = des.deser_int32(f) ^ 1 << 30
 
         for _ in range(self.new):
             new_addr = AddrInfo()
@@ -66,15 +65,10 @@ class Peers():
         return ret
 
 def dump_peers(datadir):
+    peers = Peers()
     peers_file = os.path.join(datadir, "peers.dat")
 
-    peers_ds = BCDataStream()
-    peers_ds.clear()
-
     with open(peers_file, "rb") as f:
-        peers_ds.write(f.read())
-
-    peers = Peers()
-    peers.deserialize(peers_ds)
+        peers.deserialize(f)
 
     print(peers)

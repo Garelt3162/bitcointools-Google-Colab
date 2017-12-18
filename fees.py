@@ -8,7 +8,7 @@ import os.path
 import struct
 
 from BCDataStream import SerializationError
-from datastructures import deser_compact_size
+from deserialize import deser_compact_size
 
 class FeeEstimates():
     """Represents contests of fee_estimates.dat file."""

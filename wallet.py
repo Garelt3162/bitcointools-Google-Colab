@@ -5,6 +5,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Code for parsing the wallet.dat file"""
 
+from base58 import public_key_to_bc_address
 import logging
 import re
 import sys
@@ -12,24 +13,36 @@ import time
 
 from bsddb3.db import (  # pip3 install bsddb3
     DB,
+    DBEnv,
     DBError,
     DBNoSuchFileError,
     DB_BTREE,
     DB_CREATE,
+    DB_INIT_LOCK,
+    DB_INIT_LOG,
+    DB_INIT_MPOOL,
+    DB_INIT_TXN,
     DB_RDONLY,
+    DB_RECOVER,
     DB_THREAD,
 )
 
-from base58 import public_key_to_bc_address, bc_address_to_hash_160, hash_160
+from BCDataStream import BCDataStream
 from deserialize import (
     deserialize_wallet_tx,
     parse_wallet_tx,
 )
-from BCDataStream import BCDataStream
-from util import create_env, short_hex
+from util import short_hex, determine_datadir
 
 VERSION_HD_CHAIN_SPLIT = 2
 VERSION_WITH_HDDATA = 10
+
+def create_env(db_dir=None):
+    if db_dir is None:
+        db_dir = determine_datadir()
+    db_env = DBEnv(0)
+    db_env.open(db_dir, DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_THREAD | DB_RECOVER)
+    return db_env
 
 class Wallet():
     """Represents a wallet"""
@@ -264,134 +277,134 @@ def dump_accounts(wallet):
     for name in sorted(accounts):
         print(name)
 
-def update_wallet(db, t, data):
-    """Write a single item to the wallet.
-    db must be open with writable=True.
-    t and data are the type code and data dictionary as parse_wallet would
-    give to item_callback.
-    data's __key__, __value__ and __type__ are ignored; only the primary data
-    fields are used.
-    """
-    d = data
-    kds = BCDataStream()
-    vds = BCDataStream()
+# def update_wallet(db, t, data):
+#     """Write a single item to the wallet.
+#     db must be open with writable=True.
+#     t and data are the type code and data dictionary as parse_wallet would
+#     give to item_callback.
+#     data's __key__, __value__ and __type__ are ignored; only the primary data
+#     fields are used.
+#     """
+#     d = data
+#     kds = BCDataStream()
+#     vds = BCDataStream()
 
-    # Write the type code to the key
-    kds.write_string(t)
-    vds.write("")             # Ensure there is something
+#     # Write the type code to the key
+#     kds.write_string(t)
+#     vds.write("")             # Ensure there is something
 
-    try:
-        if t == "tx":
-            raise NotImplementedError("Writing items of type 'tx'")
-            kds.write(d['tx_id'])
-            # d.update(parse_wallet_tx(vds))
-        elif t == "name":
-            kds.write(d['hash'])
-            vds.write(d['name'])
-        elif t == "version":
-            vds.write_uint32(d['version'])
-        elif t == "setting":
-            raise NotImplementedError("Writing items of type 'setting'")
-            kds.write_string(d['setting'])
-            # d['value'] = parse_setting(d['setting'], vds)
-        elif t == "key":
-            kds.write_string(d['public_key'])
-            vds.write_string(d['private_key'])
-        elif t == "wkey":
-            kds.write_string(d['public_key'])
-            vds.write_string(d['private_key'])
-            vds.write_int64(d['created'])
-            vds.write_int64(d['expires'])
-            vds.write_string(d['comment'])
-        elif t == "defaultkey":
-            vds.write_string(d['key'])
-        elif t == "pool":
-            kds.write_int64(d['n'])
-            vds.write_int32(d['nVersion'])
-            vds.write_int64(d['nTime'])
-            vds.write_string(d['public_key'])
-        elif t == "acc":
-            kds.write_string(d['account'])
-            vds.write_int32(d['nVersion'])
-            vds.write_string(d['public_key'])
-        elif t == "acentry":
-            kds.write_string(d['account'])
-            kds.write_uint64(d['n'])
-            vds.write_int32(d['nVersion'])
-            vds.write_int64(d['nCreditDebit'])
-            vds.write_int64(d['nTime'])
-            vds.write_string(d['otherAccount'])
-            vds.write_string(d['comment'])
-        else:
-            print("Unknown key type: " + t)
+#     try:
+#         if t == "tx":
+#             raise NotImplementedError("Writing items of type 'tx'")
+#             kds.write(d['tx_id'])
+#             # d.update(parse_wallet_tx(vds))
+#         elif t == "name":
+#             kds.write(d['hash'])
+#             vds.write(d['name'])
+#         elif t == "version":
+#             vds.write_uint32(d['version'])
+#         elif t == "setting":
+#             raise NotImplementedError("Writing items of type 'setting'")
+#             kds.write_string(d['setting'])
+#             # d['value'] = parse_setting(d['setting'], vds)
+#         elif t == "key":
+#             kds.write_string(d['public_key'])
+#             vds.write_string(d['private_key'])
+#         elif t == "wkey":
+#             kds.write_string(d['public_key'])
+#             vds.write_string(d['private_key'])
+#             vds.write_int64(d['created'])
+#             vds.write_int64(d['expires'])
+#             vds.write_string(d['comment'])
+#         elif t == "defaultkey":
+#             vds.write_string(d['key'])
+#         elif t == "pool":
+#             kds.write_int64(d['n'])
+#             vds.write_int32(d['nVersion'])
+#             vds.write_int64(d['nTime'])
+#             vds.write_string(d['public_key'])
+#         elif t == "acc":
+#             kds.write_string(d['account'])
+#             vds.write_int32(d['nVersion'])
+#             vds.write_string(d['public_key'])
+#         elif t == "acentry":
+#             kds.write_string(d['account'])
+#             kds.write_uint64(d['n'])
+#             vds.write_int32(d['nVersion'])
+#             vds.write_int64(d['nCreditDebit'])
+#             vds.write_int64(d['nTime'])
+#             vds.write_string(d['otherAccount'])
+#             vds.write_string(d['comment'])
+#         else:
+#             print("Unknown key type: " + t)
 
-        # Write the key/value pair to the database
-        db.put(kds.input, vds.input)
+#         # Write the key/value pair to the database
+#         db.put(kds.input, vds.input)
 
-    except Exception as e:
-        print("ERROR writing to wallet.dat, type %s" % t)
-        print("data dictionary: %r" % data)
+#     except Exception as e:
+#         print("ERROR writing to wallet.dat, type %s" % t)
+#         print("data dictionary: %r" % data)
 
-def rewrite_wallet(db_env, dest_filename, pre_put_callback=None):
-    db = open_wallet(db_env)
+# def rewrite_wallet(db_env, dest_filename, pre_put_callback=None):
+#     db = open_wallet(db_env)
 
-    db_out = DB(db_env)
-    try:
-        r = db_out.open(dest_filename, "main", DB_BTREE, DB_CREATE)
-    except DBError:
-        r = True
+#     db_out = DB(db_env)
+#     try:
+#         r = db_out.open(dest_filename, "main", DB_BTREE, DB_CREATE)
+#     except DBError:
+#         r = True
 
-    if r is not None:
-        logging.error("Couldn't open %s." % dest_filename)
-        sys.exit(1)
+#     if r is not None:
+#         logging.error("Couldn't open %s." % dest_filename)
+#         sys.exit(1)
 
-    def item_callback(t, d):
-        if (pre_put_callback is None or pre_put_callback(t, d)):
-            db_out.put(d["__key__"], d["__value__"])
+#     def item_callback(t, d):
+#         if (pre_put_callback is None or pre_put_callback(t, d)):
+#             db_out.put(d["__key__"], d["__value__"])
 
-    parse_wallet(db, item_callback)
+#     parse_wallet(db, item_callback)
 
-    db_out.close()
-    db.close()
+#     db_out.close()
+#     db.close()
 
-def trim_wallet(db_env, dest_filename, pre_put_callback=None):
-    """Write out ONLY address book public/private keys
-       THIS WILL NOT WRITE OUT 'change' KEYS-- you should
-       send all of your bitcoins to one of your public addresses
-       before calling this.
-    """
-    db = open_wallet(db_env)
+# def trim_wallet(db_env, dest_filename, pre_put_callback=None):
+#     """Write out ONLY address book public/private keys
+#        THIS WILL NOT WRITE OUT 'change' KEYS-- you should
+#        send all of your bitcoins to one of your public addresses
+#        before calling this.
+#     """
+#     db = open_wallet(db_env)
 
-    pubkeys = []
+#     pubkeys = []
 
-    def gather_pubkeys(t, d):
-        if t == "name":
-            pubkeys.append(bc_address_to_hash_160(d['hash']))
+#     def gather_pubkeys(t, d):
+#         if t == "name":
+#             pubkeys.append(bc_address_to_hash_160(d['hash']))
 
-    parse_wallet(db, gather_pubkeys)
+#     parse_wallet(db, gather_pubkeys)
 
-    db_out = DB(db_env)
-    try:
-        r = db_out.open(dest_filename, "main", DB_BTREE, DB_CREATE)
-    except DBError:
-        r = True
+#     db_out = DB(db_env)
+#     try:
+#         r = db_out.open(dest_filename, "main", DB_BTREE, DB_CREATE)
+#     except DBError:
+#         r = True
 
-    if r is not None:
-        logging.error("Couldn't open %s." % dest_filename)
-        sys.exit(1)
+#     if r is not None:
+#         logging.error("Couldn't open %s." % dest_filename)
+#         sys.exit(1)
 
-    def item_callback(t, d):
-        should_write = False
-        if t in ['version', 'name', 'acc']:
-            should_write = True
-        if t in ['key', 'wkey'] and hash_160(d['public_key']) in pubkeys:
-            should_write = True
-        if pre_put_callback is not None:
-            should_write = pre_put_callback(t, d, pubkeys)
-        if should_write:
-            db_out.put(d["__key__"], d["__value__"])
+#     def item_callback(t, d):
+#         should_write = False
+#         if t in ['version', 'name', 'acc']:
+#             should_write = True
+#         if t in ['key', 'wkey'] and hash_160(d['public_key']) in pubkeys:
+#             should_write = True
+#         if pre_put_callback is not None:
+#             should_write = pre_put_callback(t, d, pubkeys)
+#         if should_write:
+#             db_out.put(d["__key__"], d["__value__"])
 
-    parse_wallet(db, item_callback)
+#     parse_wallet(db, item_callback)
 
-    db_out.close()
-    db.close()
+#     db_out.close()
+#     db.close()
