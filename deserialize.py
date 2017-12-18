@@ -11,8 +11,10 @@ import socket
 import struct
 import time
 
-from BCDataStream import SerializationError
 from util import short_hex
+
+class SerializationError(Exception):
+    """ Thrown when there's a problem deserializing or serializing """
 
 def deser_boolean(f):
     return struct.unpack("?", f.read(1))[0]
@@ -38,8 +40,10 @@ def deser_int16(f):
 def ser_int16(l):
     return struct.pack("<h", l)
 
-def deser_uint16(f):
-    return struct.unpack("<H", f.read(2))[0]
+def deser_uint16(f, big=False):
+    fmt = ">" if big else "<"
+    fmt += "H"
+    return struct.unpack(fmt, f.read(2))[0]
 
 def ser_uint16(l, val):
     return struct.pack("<H", l)

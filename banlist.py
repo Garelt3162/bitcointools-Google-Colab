@@ -8,6 +8,7 @@ import os.path
 
 from datastructures import Ban
 import deserialize as des
+from util import hash256
 
 class Banlist():
     """Represents contents of banlist.dat file."""
@@ -25,6 +26,12 @@ class Banlist():
             ban.deserialize(f)
 
             self.banmap[ban.subnet] = ban.ban_entry
+
+        # Verify the checksum
+        position = f.tell()
+        f.seek(0)
+        if hash256(f.read(position)) != f.read(32):
+            raise des.SerializationError("File checksum incorrect")
 
     def __repr__(self):
         ret = "Network magic: 0x{} ({})\n".format(self.magic.hex(), self.network)

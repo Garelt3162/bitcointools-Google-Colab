@@ -256,7 +256,7 @@ class Address():
         self.time = des.deser_uint32(f)
         self.services = des.deser_uint64(f)
         self.ip = f.read(16)
-        self.port = des.deser_uint16(f)
+        self.port = des.deser_uint16(f, big=True)
 
         if int.from_bytes(self.ip[0:12], 'big') == 0xffff:
             self.ipv4 = True

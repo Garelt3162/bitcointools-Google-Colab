@@ -7,8 +7,7 @@
 import os.path
 import struct
 
-from BCDataStream import SerializationError
-from deserialize import deser_compact_size
+import deserialize as des
 
 class FeeEstimates():
     """Represents contests of fee_estimates.dat file."""
@@ -32,18 +31,18 @@ class FeeEstimates():
         self.version_required = struct.unpack("<I", f.read(4))[0]
         self.version_that_wrote = struct.unpack("<I", f.read(4))[0]
         if self.version_that_wrote < 149900:
-            raise SerializationError("Cannot read fee_estimates.dat file with version < 149900")
+            raise des.SerializationError("Cannot read fee_estimates.dat file with version < 149900")
 
         self.file_best_seen_height = struct.unpack("<I", f.read(4))[0]
         self.file_historical_first = struct.unpack("<I", f.read(4))[0]
         self.file_historical_best = struct.unpack("<I", f.read(4))[0]
 
         if self.file_historical_first > self.file_historical_best or self.file_historical_first > self.file_best_seen_height:
-            raise SerializationError("Corrupt estimates file. Historical block range for estimates is invalid")
+            raise des.SerializationError("Corrupt estimates file. Historical block range for estimates is invalid")
 
-        no_buckets = deser_compact_size(f)
+        no_buckets = des.deser_compact_size(f)
         if no_buckets <= 1 or no_buckets > 1000:
-            raise SerializationError("Corrupt estimates file. Must have between 2 and 1000 feerate buckets")
+            raise des.SerializationError("Corrupt estimates file. Must have between 2 and 1000 feerate buckets")
 
         for _ in range(no_buckets):
             self.buckets.append(struct.unpack("<d", f.read(8))[0])
@@ -51,24 +50,24 @@ class FeeEstimates():
         self.decay = struct.unpack("<d", f.read(8))[0]
         self.scale = struct.unpack("<I", f.read(4))[0]
 
-        avg_size = deser_compact_size(f)
+        avg_size = des.deser_compact_size(f)
         if avg_size != no_buckets:
-            raise SerializationError("Corrupt estimates file. Mismatch in feerate average bucket count")
+            raise des.SerializationError("Corrupt estimates file. Mismatch in feerate average bucket count")
         for _ in range(no_buckets):
             self.avg.append(struct.unpack("<d", f.read(8))[0])
 
-        txCtAvg_size = deser_compact_size(f)
+        txCtAvg_size = des.deser_compact_size(f)
         if txCtAvg_size != no_buckets:
-            raise SerializationError("Corrupt estimates file. Mismatch in tx count bucket count")
+            raise des.SerializationError("Corrupt estimates file. Mismatch in tx count bucket count")
         for _ in range(no_buckets):
             self.txCtAvg.append(struct.unpack("<d", f.read(8))[0])
 
-        no_block_targets = deser_compact_size(f)
+        no_block_targets = des.deser_compact_size(f)
         for _ in range(no_block_targets):
             conf_avg = []
-            no_conf_avg = deser_compact_size(f)
+            no_conf_avg = des.deser_compact_size(f)
             if no_conf_avg != no_buckets:
-                raise SerializationError("Corrupt estimates file. Mismatch in feerate conf average bucket count")
+                raise des.SerializationError("Corrupt estimates file. Mismatch in feerate conf average bucket count")
 
             for __ in range(no_buckets):
                 conf_avg.append(struct.unpack("<d", f.read(8))[0])
@@ -78,12 +77,12 @@ class FeeEstimates():
         self.max_periods = len(self.confAvg)
         self.max_confirms = self.scale * self.max_periods
 
-        no_block_targets = deser_compact_size(f)
+        no_block_targets = des.deser_compact_size(f)
         for _ in range(no_block_targets):
             fail_avg = []
-            no_fail_avg = deser_compact_size(f)
+            no_fail_avg = des.deser_compact_size(f)
             if no_fail_avg != no_buckets:
-                raise SerializationError("Corrupt estimates file. Mismatch in one of failure average bucket counts")
+                raise des.SerializationError("Corrupt estimates file. Mismatch in one of failure average bucket counts")
 
             for __ in range(no_buckets):
                 fail_avg.append(struct.unpack("<d", f.read(8))[0])

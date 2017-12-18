@@ -8,8 +8,7 @@
 import struct
 import mmap
 
-class SerializationError(Exception):
-    """ Thrown when there's a problem deserializing or serializing """
+from deserialize import SerializationError
 
 class BCDataStream(object):
     def __init__(self):
