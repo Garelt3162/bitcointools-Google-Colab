@@ -7,9 +7,10 @@
 
 import optparse
 
+from banlist import dump_banlist
 from fees import dump_fee_estimates
 from mempool import dump_mempool
-from peers import dump_banlist, dump_peers
+from peers import dump_peers
 from util import determine_datadir
 
 def main():

@@ -7,9 +7,16 @@ from base64 import b64encode
 from binascii import hexlify, unhexlify
 from codecs import encode
 import copy
+from enum import Enum
 import hashlib
 from io import BytesIO
 import struct
+import time
+
+class BanReason(Enum):
+    UNKNOWN = 0
+    NODE_MISBEHAVING = 1
+    MANUALLY_ADDED = 2
 
 COIN = 10 ** 8
 
@@ -387,3 +394,118 @@ class Transaction():
     def __repr__(self):
         return "CTransaction(nVersion=%i vin=%s vout=%s wit=%s nLockTime=%i)" \
             % (self.nVersion, repr(self.vin), repr(self.vout), repr(self.wit), self.nLockTime)
+
+class Address():
+    def __init__(self):
+        self.version = 0
+        self.time = 0
+        self.services = 0
+        self.ip = b''
+        self.port = 0
+
+    def deserialize(self, f):
+        self.version = f.read_uint32()
+        self.time = f.read_uint32()
+        self.services = f.read_uint64()
+        self.ip = f.read_bytes(16)
+        self.port = f.read_uint16()
+
+        if int.from_bytes(self.ip[0:12], 'big') == 0xffff:
+            self.ipv4 = True
+        else:
+            self.ipv4 = False
+
+    def __repr__(self):
+        if self.ipv4:
+            ret = ".".join([str(int.from_bytes(self.ip[n:n + 1], 'big')) for n in range(12, 16)])
+        else:
+            ret = ":".join([self.ip[n:n + 1].hex() for n in range(16)])
+
+        ret += ", port: {}".format(self.port)
+
+        return ret
+
+class AddrInfo():
+    def __init__(self):
+        self.address = Address()
+        self.source = b''
+        self.last_success = 0
+        self.attempts = 0
+
+    def deserialize(self, f):
+        self.address.deserialize(f)
+        self.source = f.read_bytes(16)
+        self.last_success = f.read_int64()
+        self.attempts = f.read_int32()
+
+    def __repr__(self):
+        return self.address.__repr__()
+
+class Subnet():
+    def __init__(self):
+        self.network = b''
+        self.netmask = b''
+
+    def deserialize(self, f):
+        self.network = f.read_bytes(16)
+        self.netmask = f.read_bytes(16)
+        self.valid = f.read_boolean()
+
+        if int.from_bytes(self.network[0:12], 'big') == 0xffff:
+            self.ipv4 = True
+        else:
+            self.ipv4 = False
+
+    def __repr__(self):
+        if self.ipv4:
+            ret = ".".join([str(int.from_bytes(self.network[n:n + 1], 'big')) for n in range(12, 16)])
+            ret += ", netmask: "
+            ret += ".".join([str(int.from_bytes(self.netmask[n:n + 1], 'big')) for n in range(12, 16)])
+        else:
+            ret = ":".join([self.network[n:n + 1].hex() for n in range(16)])
+            ret += ", netmask: "
+            ret += ":".join([self.netmask[n:n + 1].hex() for n in range(16)])
+
+        return ret
+
+class BanEntry():
+    def __init__(self):
+        self.version = 0
+        self.create_time = 0
+        self.ban_until = 0
+        self.reason = BanReason.UNKNOWN
+
+    def deserialize(self, f):
+        self.version = f.read_int32()
+        self.create_time = f.read_int64()
+        self.ban_until = f.read_int64()
+        self.reason = BanReason(int.from_bytes(f.read_bytes(1), 'big'))
+
+    def __repr__(self):
+        ret = "version: {}, create_time: {}, ban_until: {}".format(
+            self.version,
+            time.ctime(self.create_time),
+            time.ctime(self.ban_until),
+        )
+        ret += ", reason: "
+        if self.reason == BanReason.UNKNOWN:
+            ret += "unknown"
+        elif self.reason == BanReason.MANUALLY_ADDED:
+            ret += "manually_added"
+        elif self.reason == BanReason.NODE_MISBEHAVING:
+            ret += "node_misbehaving"
+
+        return ret
+
+class Ban():
+    """A single entry in the banmap"""
+    def __init__(self):
+        self.subnet = None
+        self.ban_entry = None
+
+    def deserialize(self, f):
+        """Parse a ban entry from the start of a bytestream. Return a Ban object."""
+        self.subnet = Subnet()
+        self.subnet.deserialize(f)
+        self.ban_entry = BanEntry()
+        self.ban_entry.deserialize(f)
