@@ -2,14 +2,9 @@
 
 A toolchain for bitcoind data files.
 
-Deserializes wallet.dat and peers.dat.
-
-Future work: deserialize banlist.dat, mempool.dat and fee_estimates.dat.
-
 ### bitcoin-wallet-tool.py
 
-Run `bitcoin-wallet-tool.py --help` for usage. Database files are opened read-only, but
-you should back up your wallet.dat file before using this.
+Run `bitcoin-wallet-tool.py --help` for usage. Database files are opened read-only, but you should back up your wallet.dat file before using this.
 
 You must quit Bitcoin before reading the wallet database file.
 
@@ -27,14 +22,11 @@ Print out all 'received' transactions that aren't yet spent:
 
 Parses and prints datadir files:
 
+- banlist.dat
+- fee_estimates.dat
+- mempool.dat
 - peers.dat
 
 ### fixwallet.py
 
 Half-baked utility that reads a wallet.dat and writes out a new wallet.dat. Do not use this!
-
-### jsonToCSV.py
-
-Read JSON list-of-objects from standard input, writes CSV file to standard output.
-Useful for converting bitcoind's listtransactions output to CSV that can be
-imported into a spreadsheet.
