@@ -23,7 +23,7 @@ class MempoolTx():
         return ret
 
 class Mempool():
-    """Represents contests of mempool.dat file."""
+    """Represents contents of mempool.dat file."""
     def __init__(self):
         self.version = 0
         self.txs = []

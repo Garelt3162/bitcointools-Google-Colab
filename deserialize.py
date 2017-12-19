@@ -110,7 +110,7 @@ def ser_compact_size(l):
 
 def deser_string(f):
     nit = deser_compact_size(f)
-    return f.read(nit)
+    return f.read(nit).decode("utf-8")
 
 def ser_string(s):
     return ser_compact_size(len(s)) + s
