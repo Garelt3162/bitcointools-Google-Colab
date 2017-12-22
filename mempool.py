@@ -5,10 +5,10 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Parse mempool.dat"""
 import os.path
-import struct
 import time
 
 from datastructures import Transaction
+from serialize import open_bs
 
 class MempoolTx():
     def __init__(self, tx, time, fee_delta):
@@ -29,15 +29,15 @@ class Mempool():
         self.txs = []
 
     def deserialize(self, f):
-        self.version = struct.unpack("<q", f.read(8))[0]
+        self.version = f.deser_int64()
 
-        txs = struct.unpack("<q", f.read(8))[0]
+        txs = f.deser_int64()
 
         for _ in range(txs):
             tx = Transaction()
             tx.deserialize(f)
-            time = struct.unpack("<q", f.read(8))[0]
-            fee_delta = struct.unpack("<q", f.read(8))[0]
+            time = f.deser_int64()
+            fee_delta = f.deser_int64()
 
             self.txs.append(MempoolTx(tx, time, fee_delta))
 
@@ -54,7 +54,7 @@ def dump_mempool(datadir):
 
     mempool_file = os.path.join(datadir, "mempool.dat")
 
-    with open(mempool_file, "rb") as f:
+    with open_bs(mempool_file, "r") as f:
         mempool = Mempool()
         mempool.deserialize(f)
 

@@ -8,6 +8,7 @@ import os.path
 import struct
 
 import deserialize as des
+from serialize import open_bs
 
 class FeeEstimates():
     """Represents contests of fee_estimates.dat file."""
@@ -112,7 +113,7 @@ def dump_fee_estimates(datadir):
     fee_estimates = FeeEstimates()
 
     fee_file = os.path.join(datadir, "fee_estimates.dat")
-    with open(fee_file, "rb") as f:
+    with open_bs(fee_file, "r") as f:
         fee_estimates.deserialize(f)
 
     print(fee_estimates)

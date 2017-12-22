@@ -8,6 +8,7 @@ import os.path
 
 from datastructures import AddrInfo
 import deserialize as des
+from serialize import open_bs
 from util import hash256
 
 class Peers():
@@ -41,7 +42,7 @@ class Peers():
 
     def deserialize(self, f):
         self.magic, self.network = des.deserialize_magic(f)
-        self.version = des.deser_uint8(f)
+        self.version = f.deser_uint8()
         self.flag = f.read(1)
         assert self.flag == b'\x20'
         self.key = f.read(32)
@@ -101,7 +102,7 @@ def dump_peers(datadir):
     peers = Peers()
     peers_file = os.path.join(datadir, "peers.dat")
 
-    with open(peers_file, "rb") as f:
+    with open_bs(peers_file, "r") as f:
         peers.deserialize(f)
 
     print(peers)

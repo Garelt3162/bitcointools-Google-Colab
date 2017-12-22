@@ -10,7 +10,7 @@ import struct
 import time
 
 import deserialize as des
-from utils import bytes_to_hex_str, uint256_from_str, hash256
+from util import bytes_to_hex_str, uint256_from_str, hash256
 
 class BanReason(Enum):
     UNKNOWN = 0

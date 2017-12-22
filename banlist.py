@@ -8,6 +8,7 @@ import os.path
 
 from datastructures import Ban
 import deserialize as des
+from serialize import open_bs
 from util import hash256
 
 class Banlist():
@@ -19,7 +20,7 @@ class Banlist():
 
     def deserialize(self, f):
         self.magic, self.network = des.deserialize_magic(f)
-        bl_len = des.deser_compact_size(f)
+        bl_len = f.deser_compact_size()
 
         for _ in range(bl_len):
             ban = Ban()
@@ -47,7 +48,7 @@ def dump_banlist(datadir):
 
     banlist_file = os.path.join(datadir, "banlist.dat")
 
-    with open(banlist_file, "rb") as f:
+    with open_bs(banlist_file, "r") as f:
         banlist.deserialize(f)
 
     print(banlist)
