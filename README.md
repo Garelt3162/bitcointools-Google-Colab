@@ -12,7 +12,7 @@ Examples:
 
 Print out wallet keys and transactions:
 
-`bitcoin-wallet-tool.py --wallet --wallet-tx`
+`bitcoin-wallet-tool.py --dumpwallet --wallet-tx`
 
 Print out all 'received' transactions that aren't yet spent:
 
@@ -22,11 +22,7 @@ Print out all 'received' transactions that aren't yet spent:
 
 Parses and prints datadir files:
 
-- banlist.dat
-- fee_estimates.dat
-- mempool.dat
-- peers.dat
-
-### fixwallet.py
-
-Half-baked utility that reads a wallet.dat and writes out a new wallet.dat. Do not use this!
+- `banlist.dat`
+- `fee_estimates.dat`
+- `mempool.dat`
+- `peers.dat`

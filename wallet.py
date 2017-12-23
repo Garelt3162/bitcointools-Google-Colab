@@ -364,21 +364,18 @@ def dump_wallet(wallet, print_wallet, print_wallet_transactions, transaction_fil
 #     db_out.close()
 #     db.close()
 
-# def trim_wallet(db_env, dest_filename, pre_put_callback=None):
+# def trim_wallet(wallet, dest_filename, pre_put_callback=None):
 #     """Write out ONLY address book public/private keys
 #        THIS WILL NOT WRITE OUT 'change' KEYS-- you should
 #        send all of your bitcoins to one of your public addresses
-#        before calling this.
-#     """
-#     db = open_wallet(db_env)
-
+#        before calling this."""
 #     pubkeys = []
 
 #     def gather_pubkeys(t, d):
 #         if t == "name":
 #             pubkeys.append(bc_address_to_hash_160(d['hash']))
 
-#     parse_wallet(db, gather_pubkeys)
+#     wallet.parse_wallet()
 
 #     db_out = DB(db_env)
 #     try:
