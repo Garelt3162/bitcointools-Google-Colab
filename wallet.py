@@ -6,9 +6,7 @@
 """Code for parsing the wallet.dat file"""
 
 from base58 import public_key_to_bc_address
-from io import BytesIO
 import logging
-import re
 import sys
 import time
 
@@ -28,8 +26,7 @@ from bsddb3.db import (  # pip3 install bsddb3
     DB_THREAD,
 )
 
-from datastructures import WalletTransaction
-from deserialize import deserialize_wallet_tx
+from datastructures import WalletTransaction, BestBlock, KeyPool
 from serialize import BCBytesStream
 from util import short_hex, determine_datadir
 
@@ -47,16 +44,19 @@ class Wallet():
     """Represents contents of wallet.dat file."""
 
     def __init__(self, datadir):
-        self.version = 0
-        self.minimum_version = 0
-        self.orderposnext = 0
-        self.wallet_transactions = []
-        self.transaction_index = {}
-        self.owner_keys = {}
-        self.records = []
+        self.default_key = b''
         self.keys = {}
-        self.wkeys = {}
+        self.minimum_version = 0
+        self.names = {}
+        self.orderposnext = 0
+        self.owner_keys = {}
+        self.pool = {}
         self.purposes = {}
+        self.records = []
+        self.transaction_index = {}
+        self.version = 0
+        self.wallet_transactions = []
+        self.wkeys = {}
 
         try:
             self.db_env = create_env(datadir)
@@ -72,14 +72,31 @@ class Wallet():
         ret = "version: {}\n".format(self.version)
         ret += "minimum_version: {}\n".format(self.minimum_version)
         ret += "orderposnext: {}\n".format(self.orderposnext)
+        if self.best_block:
+            ret += "best_block: {}".format(self.best_block.__repr__())
+        if self.best_block_no_merkle:
+            ret += "best_block_no_merkle: {}".format(self.best_block_no_merkle.__repr__())
+        if self.default_key != b'':
+            ret += "default_key: {}\n".format(self.default_key)
         if self.keys:
             ret += "keys:\n"
-            for pub_key, priv_key in self.keys.items():
-                ret += "    pub_key:{}, address:{}, priv_key:{}o\n".format(pub_key.hex(), public_key_to_bc_address(pub_key), short_hex(priv_key))
+            ret += "\n".join(["  pub_key: {}, address: {}, priv_key: {}".format(pub_key.hex(), public_key_to_bc_address(pub_key), short_hex(priv_key)) for pub_key, priv_key in self.keys.items()])
+            ret += "\n"
         if self.wkeys:
             ret += "wkeys:\n"
-            for wkey in self.wkeys:
-                ret += "    {}".format(wkey)
+            ret += "\n".join(["  {}".format(wkey) for wkey in self.wkeys])
+            ret += "\n"
+        if self.names:
+            ret += "names:\n"
+            ret += "\n".join(["  address: {}, name: {}".format(address, name) for name, address in self.names.items()])
+            ret += "\n"
+        if self.purposes:
+            ret += "purposes:\n"
+            ret += "\n".join(["  address: {}, purpose: {}".format(purpose, address) for purpose, address in self.purposes.items()])
+            ret += "\n"
+        if self.pool:
+            ret += "KeyPool:\n"
+            ret += "".join(["  {}. {}".format(n, key_pool) for n, key_pool in self.pool.items()])
 
         return ret
 
@@ -116,9 +133,10 @@ class Wallet():
                     tx.tx_id = tx_id
                     self.wallet_transactions.append(tx)
                     self.transaction_index[tx_id] = tx
+                    continue
                 if t == "name":
-                    d['hash'] = kds.deser_string()
-                    d['name'] = vds.deser_string()
+                    self.names[vds.deser_string()] = kds.deser_string()
+                    continue
                 elif t == "version":
                     self.version = vds.deser_uint32()
                     continue
@@ -143,14 +161,25 @@ class Wallet():
                     self.wkeys.append({'pubkey': public_key, 'priv_key': private_key, 'created': created, 'expiers': expires, 'comment': comment})
                     continue
                 elif t == "defaultkey":
-                    d['key'] = vds.read(vds.deser_compact_size())
-                # elif t == "pool":
-                #     d['n'] = kds.read_int64()
-                #     d['nVersion'] = vds.read_int32()
-                #     d['nTime'] = vds.read_int64()
-                #     d['public_key'] = vds.read(vds.read_compact_size())
+                    self.default_key = vds.read(vds.deser_compact_size())
+                    continue
+                elif t == "bestblock":
+                    best_block = BestBlock()
+                    best_block.deserialize(vds)
+                    self.best_block = best_block
+                    continue
+                elif t == "bestblock_nomerkle":
+                    best_block_no_merkle = BestBlock()
+                    best_block_no_merkle.deserialize(vds)
+                    self.best_block_no_merkle = best_block_no_merkle
+                    continue
                 elif t == "purpose":
-                    self.purposes[kds.deser_string] = vds.deser_string()
+                    self.purposes[kds.deser_string()] = vds.deser_string()
+                    continue
+                elif t == "pool":
+                    keypool = KeyPool()
+                    keypool.deserialize(vds)
+                    self.pool[kds.deser_int64()] = keypool
                     continue
                 # elif t == "acc":
                 #     d['account'] = kds.deser_string()
@@ -164,16 +193,6 @@ class Wallet():
                 #     d['nTime'] = vds.read_int64()
                 #     d['otherAccount'] = vds.deser_string()
                 #     d['comment'] = vds.deser_string()
-                # elif t == "bestblock_nomerkle":
-                #     d['nVersion'] = vds.read_uint32()
-                #     d['vHave'] = []
-                #     for block in range(vds.read_compact_size()):
-                #         d['vHave'].append(vds.read(32).hex())
-                # elif t == "bestblock":
-                #     d['nVersion'] = vds.read_uint32()
-                #     d['vHave'] = []
-                #     for block in range(vds.read_compact_size()):
-                #         d['vHave'].append(vds.read(32).hex())
                 # elif t == "hdchain":
                 #     d['nVersion'] = vds.read_uint32()
                 #     d['nExternalChainCounter'] = vds.read_uint32()
@@ -191,6 +210,7 @@ class Wallet():
                 #         d['hdKeyPath'] = "Not HD"
                 #         d['hdMasterKeyID'] = "Not HD"
                 else:
+                    print("ERROR parsing wallet.dat, type %s" % t)
                     continue
 
                 self.records.append(d)
@@ -214,39 +234,17 @@ def dump_wallet(wallet, print_wallet, print_wallet_transactions, transaction_fil
         for d in wallet.records:
             t = d["__type__"]
 
-            if t == "tx":
-                continue
-            elif t == "name":
-                print("address {}: {}".format(d['hash'], d['name']))
-            elif t == "defaultkey":
-                print("Default Key: 0x{}, address: {}".format(short_hex(d['key']), public_key_to_bc_address(d['key'])))
-            elif t == "pool":
-                print("Pool key i{}: {}, create time: {})".format(d['n'], public_key_to_bc_address(d['public_key']), time.ctime(d['nTime'])))
-            elif t == "acc":
+            if t == "acc":
                 print("Account: {}, current key: {}".format(d['account'], public_key_to_bc_address(d['public_key'])))
             elif t == "acentry":
                 print("Move {} {} (other: '{}', time: {}, entry {}) {}".format((d['account'], d['nCreditDebit'], d['otherAccount'], time.ctime(d['nTime']), d['n'], d['comment'])))
-            elif t == "purpose":
-                print("purpose: Address: {}, purpose: {}".format(d['address'], d['purpose']))
-            elif t == "bestblock":
-                if d['vHave']:
-                    best_block = d['vHave'][0]
-                else:
-                    best_block = "empty"
-                print("bestblock: version:{}, bestblock hash: {}".format(d['nVersion'], best_block))
-            elif t == "bestblock_nomerkle":
-                if d['vHave']:
-                    best_block = d['vHave'][0]
-                else:
-                    best_block = "empty"
-                print("bestblock_nomerkle: version:{}, bestblock hash: {}".format(d['nVersion'], best_block))
             elif t == "hdchain":
                 print("hdchain: version: {}, external chain counter:{}, master key id: {}, internal chain counter: {}".format(d['nVersion'], d['nExternalChainCounter'], d['masterKeyID'], d['nInternalChainCounter']))
             elif t == "keymeta":
                 print("keymeta: version: {}, create time: {}, HD key path: {}, HD master key: {}".format(d['nVersion'], time.ctime(d['nCreateTime']), d['hdKeyPath'], d['hdMasterKeyID']))
             else:
-                # print("Unknown key type: {}".format(t.hex()))
-                # print("value data in hex: {}".format(d["__value__"]))
+                print("Unknown key type: {}".format(t.hex()))
+                print("value data in hex: {}".format(d["__value__"]))
                 pass
 
     if print_wallet_transactions:

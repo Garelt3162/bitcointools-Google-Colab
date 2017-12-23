@@ -310,6 +310,38 @@ class AddrInfo():
     def __repr__(self):
         return self.address.__repr__()
 
+class BestBlock():
+    def __init__(self):
+        self.version = 0
+        self.have = []
+
+    def deserialize(self, f):
+        self.version = f.deser_uint32()
+        for block in range(f.deser_compact_size()):
+            self.have.append(f.read(32).hex())
+
+    def __repr__(self):
+        if self.have:
+            best_block = self.have[0]
+        else:
+            best_block = "empty"
+        return "version:{}, bestblock hash: {}\n".format(self.version, best_block)
+
+class KeyPool():
+    """A Keypool Entry."""
+    def __init__(self):
+        self.version = 0
+        self.time = 0
+        self.pub_key = b''
+
+    def deserialize(self, f):
+        self.version = f.deser_uint32()
+        self.time = f.deser_int64()
+        self.pub_key = f.read(f.deser_compact_size()).hex()
+
+    def __repr__(self):
+        return "version: {}, time: {}, pub_key: 0x{}\n".format(self.version, time.ctime(self.time), self.pub_key)
+
 class Subnet():
     def __init__(self):
         self.network = b''
