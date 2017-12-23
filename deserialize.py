@@ -172,8 +172,8 @@ def parse_address(vds):
     d['nVersion'] = vds.read_int32()
     d['nTime'] = vds.read_uint32()
     d['nServices'] = vds.read_uint64()
-    d['pchReserved'] = vds.read_bytes(12)
-    d['ip'] = socket.inet_ntoa(vds.read_bytes(4))
+    d['pchReserved'] = vds.read(12)
+    d['ip'] = socket.inet_ntoa(vds.read(4))
     d['port'] = vds.read_uint16()
     return d
 
@@ -196,9 +196,9 @@ def deserialize_address(d):
 def parse_txin(vds):
     # import pdb; pdb.set_trace()
     d = {}
-    d['prevout_hash'] = vds.read_bytes(32)
+    d['prevout_hash'] = vds.read(32)
     d['prevout_n'] = vds.read_uint32()
-    d['scriptSig'] = vds.read_bytes(vds.read_compact_size())
+    d['scriptSig'] = vds.read(vds.read_compact_size())
     d['sequence'] = vds.read_uint32()
     return d
 
@@ -222,7 +222,7 @@ def deserialize_txin(d, transaction_index=None, owner_keys=None):
 def parse_txout(vds):
     d = {}
     d['value'] = vds.read_int64()
-    d['scriptPubKey'] = vds.read_bytes(vds.read_compact_size())
+    d['scriptPubKey'] = vds.read(vds.read_compact_size())
     return d
 
 def deserialize_txout(d, owner_keys=None):
@@ -243,7 +243,7 @@ def parse_tx(vds):
     d['version'] = vds.read_int32()
     segwit = False
     if int.from_bytes(vds.peep_byte(), 'big') == 0:
-        if int.from_bytes(vds.read_bytes(2), 'big') != 1:
+        if int.from_bytes(vds.read(2), 'big') != 1:
             raise SerializationError("Segwit flag not set to 1")
         segwit = True
     n_vin = vds.read_compact_size()
@@ -274,9 +274,9 @@ def deserialize_tx(d, transaction_index=None, owner_keys=None):
 
 def parse_merkle_tx(vds):
     d = parse_tx(vds)
-    d['hashBlock'] = vds.read_bytes(32)
+    d['hashBlock'] = vds.read(32)
     n_merkle_branch = vds.read_compact_size()
-    d['merkleBranch'] = vds.read_bytes(32 * n_merkle_branch)
+    d['merkleBranch'] = vds.read(32 * n_merkle_branch)
     d['nIndex'] = vds.read_int32()
     return d
 

@@ -4,8 +4,11 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-from io import BufferedReader
+from io import BufferedReader, BytesIO
 import struct
+
+class SerializationError(Exception):
+    """ Thrown when there's a problem deserializing or serializing """
 
 class BCBytesStream():
     """A class that provides additional serialization and deserialization methods
@@ -16,8 +19,12 @@ class BCBytesStream():
 
     def __init__(self, br):
         """Must be initialized with a BufferedReader."""
-        assert type(br) == BufferedReader
-        self._br = br
+        if type(br) == BufferedReader or type(br) == BytesIO:
+            self._br = br
+        elif type(br) == bytes:
+            self._br = BytesIO(br)
+        else:
+            raise TypeError("BCBytesStream requires BufferedReader, BytesIO or bytes object, not {}".format(type(br)))
 
     def __getattr__(self, name):
         return getattr(self._br, name)
@@ -120,6 +127,68 @@ class BCBytesStream():
         else:
             r = struct.pack("<BQ", 255, val)
         self.write(r)
+
+    def deser_string(self):
+        nit = self.deser_compact_size()
+        return self.read(nit).decode("utf-8")
+
+    def ser_string(self, s):
+        self.ser_compact_size(len(s))
+        self.write(s)
+
+    def deser_vector(self, c):
+        nit = self.deser_compact_size()
+        r = []
+        for _ in range(nit):
+            t = c()
+            t.deserialize(self)
+            r.append(t)
+        return r
+
+    def ser_vector(self, l, ser_function_name=None):
+        """Serialize a vector object.
+
+        ser_function_name: Allow for an alternate serialization function on the
+        entries in the vector."""
+
+        self.write(self.ser_compact_size(len(l)))
+        for i in l:
+            if ser_function_name:
+                self.write(getattr(i, ser_function_name)())
+            else:
+                self.write(i)
+
+    def deser_uint256_vector(self):
+        nit = self.deser_compact_size()
+        r = []
+        for i in range(nit):
+            t = self.deser_uint256(self)
+            r.append(t)
+        return r
+
+    def ser_uint256_vector(self, l):
+        self.ser_compact_size(len(l))
+        for i in l:
+            self.ser_uint256(i)
+
+    def deser_string_vector(self):
+        nit = self.deser_compact_size()
+        r = []
+        for i in range(nit):
+            t = self.deser_string()
+            r.append(t)
+        return r
+
+    def ser_string_vector(self, l):
+        self.ser_compact_size(len(l))
+        for sv in l:
+            self.ser_string(sv)
+
+    def peep_byte(self):
+        pos = self.tell()
+        r = self.read(1)
+        self.seek(pos)
+        return r
 
 def open_bs(path, mode):
     f = open(path, mode + 'b')

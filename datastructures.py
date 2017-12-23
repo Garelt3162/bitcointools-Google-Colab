@@ -9,7 +9,7 @@ from enum import Enum
 import struct
 import time
 
-import deserialize as des
+from serialize import SerializationError
 from util import bytes_to_hex_str, uint256_from_str, hash256
 
 class BanReason(Enum):
@@ -24,18 +24,18 @@ class OutPoint():
         self.hash = hash
         self.n = n
 
-    def deserialize(self, f):
-        self.hash = des.deser_uint256(f)
-        self.n = des.deser_uint32(f)
-
-    def serialize(self):
-        r = b""
-        r += des.ser_uint256(self.hash)
-        r += des.ser_uint32(self.n)
-        return r
-
     def __repr__(self):
         return "OutPoint(hash=%064x n=%i)" % (self.hash, self.n)
+
+    def deserialize(self, f):
+        self.hash = f.deser_uint256()
+        self.n = f.deser_uint32()
+
+    def serialize(self, f):
+        r = b""
+        r += f.ser_uint256(self.hash)
+        r += f.ser_uint32(self.n)
+        return r
 
 class TxIn():
     def __init__(self, outpoint=None, script_sig=b"", sequence=0):
@@ -46,43 +46,43 @@ class TxIn():
         self.script_sig = script_sig
         self.sequence = sequence
 
-    def deserialize(self, f):
-        self.prevout = OutPoint()
-        self.prevout.deserialize(f)
-        self.script_sig = des.deser_string(f)
-        self.sequence = des.deser_uint32(f)
-
-    def serialize(self):
-        r = b""
-        r += self.prevout.serialize()
-        r += des.ser_string(self.script_sig)
-        r += des.ser_uint32(self.sequence)
-        return r
-
     def __repr__(self):
         return "TxIn(prevout=%s script_sig=%s sequence=%i)" \
             % (repr(self.prevout), bytes_to_hex_str(self.script_sig),
                self.sequence)
+
+    def deserialize(self, f):
+        self.prevout = OutPoint()
+        self.prevout.deserialize(f)
+        self.script_sig = f.read(f.deser_compact_size())
+        self.sequence = f.deser_uint32()
+
+    def serialize(self, f):
+        r = b""
+        r += self.prevout.serialize()
+        r += f.ser_string(self.script_sig)
+        r += f.ser_uint32(self.sequence)
+        return r
 
 class TxOut():
     def __init__(self, value=0, script_pub_key=b""):
         self.value = value
         self.script_pub_key = script_pub_key
 
-    def deserialize(self, f):
-        self.value = des.deser_int64(f)
-        self.script_pub_key = des.deser_string(f)
-
-    def serialize(self):
-        r = b""
-        r += des.ser_int64(self.value)
-        r += des.ser_string(self.script_pub_key)
-        return r
-
     def __repr__(self):
         return "TxOut(value=%i.%08i script_pub_key=%s)" \
             % (self.value // COIN, self.value % COIN,
                bytes_to_hex_str(self.script_pub_key))
+
+    def deserialize(self, f):
+        self.value = f.deser_int64()
+        self.script_pub_key = f.read(f.deser_compact_size())
+
+    def serialize(self, f):
+        r = b""
+        r += f.ser_int64(self.value)
+        r += f.ser_string(self.script_pub_key)
+        return r
 
 class ScriptWitness():
     def __init__(self):
@@ -91,7 +91,7 @@ class ScriptWitness():
 
     def __repr__(self):
         return "ScriptWitness(%s)" % \
-               (",".join([bytes_to_hex_str(x) for x in self.stack]))
+               (",".join([x for x in self.stack]))
 
     def is_null(self):
         if self.stack:
@@ -102,14 +102,14 @@ class TxInWitness():
     def __init__(self):
         self.scriptWitness = ScriptWitness()
 
-    def deserialize(self, f):
-        self.scriptWitness.stack = des.deser_string_vector(f)
-
-    def serialize(self):
-        return des.ser_string_vector(self.scriptWitness.stack)
-
     def __repr__(self):
         return repr(self.scriptWitness)
+
+    def deserialize(self, f):
+        self.scriptWitness.stack = f.deser_string_vector()
+
+    def serialize(self, f):
+        return f.ser_string_vector(self.scriptWitness.stack)
 
     def is_null(self):
         return self.scriptWitness.is_null()
@@ -117,6 +117,10 @@ class TxInWitness():
 class TxWitness():
     def __init__(self):
         self.vtxinwit = []
+
+    def __repr__(self):
+        return "TxWitness(%s)" % \
+               (';'.join([repr(x) for x in self.vtxinwit]))
 
     def deserialize(self, f):
         for i in range(len(self.vtxinwit)):
@@ -131,10 +135,6 @@ class TxWitness():
             r += x.serialize()
         return r
 
-    def __repr__(self):
-        return "TxWitness(%s)" % \
-               (';'.join([repr(x) for x in self.vtxinwit]))
-
     def is_null(self):
         for x in self.vtxinwit:
             if not x.is_null():
@@ -144,7 +144,7 @@ class TxWitness():
 class Transaction():
     def __init__(self, tx=None):
         if tx is None:
-            self.nVersion = 1
+            self.version = 1
             self.vin = []
             self.vout = []
             self.wit = TxWitness()
@@ -152,7 +152,7 @@ class Transaction():
             self.sha256 = None
             self.hash = None
         else:
-            self.nVersion = tx.nVersion
+            self.version = tx.version
             self.vin = copy.deepcopy(tx.vin)
             self.vout = copy.deepcopy(tx.vout)
             self.nLockTime = tx.nLockTime
@@ -160,47 +160,38 @@ class Transaction():
             self.hash = tx.hash
             self.wit = copy.deepcopy(tx.wit)
 
+    def __repr__(self):
+        return "CTransaction(version=%i vin=%s vout=%s wit=%s nLockTime=%i)" \
+            % (self.version, repr(self.vin), repr(self.vout), repr(self.wit), self.nLockTime)
+
     def deserialize(self, f):
-        self.nVersion = des.deser_int32(f)
-        self.vin = des.deser_vector(f, TxIn)
-        flags = 0
-        if len(self.vin) == 0:
-            flags = des.deser_uint8(f)
-            # Not sure why flags can't be zero, but this
-            # matches the implementation in bitcoind
-            if (flags != 0):
-                self.vin = des.deser_vector(f, TxIn)
-                self.vout = des.deser_vector(f, TxOut)
-        else:
-            self.vout = des.deser_vector(f, TxOut)
-        if flags != 0:
+        self.version = f.deser_int32()
+        segwit = False
+        if int.from_bytes(f.peep_byte(), 'big') == 0:
+            if int.from_bytes(f.read(2), 'big') != 1:
+                raise SerializationError("Segwit flag not set to 1")
+            segwit = True
+        self.vin = f.deser_vector(TxIn)
+        self.vout = f.deser_vector(TxOut)
+        if segwit:
             self.wit.vtxinwit = [TxInWitness() for i in range(len(self.vin))]
             self.wit.deserialize(f)
-        self.nLockTime = des.deser_uint32(f)
+        self.nLockTime = f.deser_uint32()
         self.sha256 = None
         self.hash = None
 
-    def serialize_without_witness(self):
-        r = b""
-        r += des.ser_int32(self.nVersion)
-        r += des.ser_vector(self.vin)
-        r += des.ser_vector(self.vout)
-        r += des.ser_uint32(self.nLockTime)
-        return r
-
-    # Only serialize with witness when explicitly called for
-    def serialize_with_witness(self):
+    def serialize(self, f):
         flags = 0
         if not self.wit.is_null():
             flags |= 1
         r = b""
-        r += des.ser_int32(self.nVersion)
+        r += f.ser_int32(self.version)
         if flags:
             dummy = []
-            r += des.ser_vector(dummy)
+            r += f.ser_vector(dummy)
             r += struct.pack("<B", flags)
-        r += des.ser_vector(self.vin)
-        r += des.ser_vector(self.vout)
+        r += f.ser_vector(self.vin)
+        r += f.ser_vector(self.vout)
         if flags & 1:
             if (len(self.wit.vtxinwit) != len(self.vin)):
                 # vtxinwit must have the same length as vin
@@ -208,13 +199,8 @@ class Transaction():
                 for i in range(len(self.wit.vtxinwit), len(self.vin)):
                     self.wit.vtxinwit.append(TxInWitness())
             r += self.wit.serialize()
-        r += des.ser_uint32(self.nLockTime)
+        r += f.ser_uint32(self.nLockTime)
         return r
-
-    # Regular serialization is without witness -- must explicitly
-    # call serialize_with_witness to include witness data.
-    def serialize(self):
-        return self.serialize_without_witness()
 
     # Recalculate the txid (transaction hash without witness)
     def rehash(self):
@@ -232,16 +218,51 @@ class Transaction():
             self.sha256 = uint256_from_str(hash256(self.serialize_without_witness()))
         self.hash = encode(hash256(self.serialize())[::-1], 'hex_codec').decode('ascii')
 
-    def is_valid(self):
-        self.calc_sha256()
-        for tout in self.vout:
-            if tout.nValue < 0 or tout.nValue > 21000000 * COIN:
-                return False
-        return True
+class MerkleTransaction(Transaction):
+    def __init__(self):
+        super().__init__()
+        self.hash_block = 0
+        self.merkle_branch = b''
+        self.index = 0
 
-    def __repr__(self):
-        return "CTransaction(nVersion=%i vin=%s vout=%s wit=%s nLockTime=%i)" \
-            % (self.nVersion, repr(self.vin), repr(self.vout), repr(self.wit), self.nLockTime)
+    def deserialize(self, f):
+        super().deserialize(f)
+        self.hash_block = f.read(32)
+        merkle_proof_len = f.deser_compact_size()  # Should be zero!
+        self.merkle_branch = f.read(32 * merkle_proof_len)
+        self.index = f.deser_int32()
+
+class WalletTransaction(MerkleTransaction):
+    def __init__(self):
+        super().__init__()
+        self.vtxPrev = []
+        self.mapValue = {}
+        self.order_form = []
+        self.time_received_is_tx_time = 0
+        self.time_received = 0
+        self.from_me = False
+        self.spent = False
+
+    def deserialize(self, f):
+        super().deserialize(f)
+        n_vtx_prev = f.deser_compact_size()  # Should be zero!
+        for i in range(n_vtx_prev):
+            self.vtxPrev.append(f.parse_merkle_tx())
+
+        n_map_value = f.deser_compact_size()
+        for i in range(n_map_value):
+            key = f.deser_string()
+            value = f.deser_string()
+            self.mapValue[key] = value
+        n_order_form = f.deser_compact_size()
+        for i in range(n_order_form):
+            first = f.deser_string()
+            second = f.deser_string()
+            self.order_form.append((first, second))
+        self.time_received_is_tx_time = f.deser_uint32()
+        self.time_received = f.deser_uint32()
+        self.from_me = f.deser_boolean()
+        self.spent = f.deser_boolean()
 
 class Address():
     def __init__(self):
@@ -250,18 +271,6 @@ class Address():
         self.services = 0
         self.ip = b''
         self.port = 0
-
-    def deserialize(self, f):
-        self.version = des.deser_uint32(f)
-        self.time = des.deser_uint32(f)
-        self.services = des.deser_uint64(f)
-        self.ip = f.read(16)
-        self.port = des.deser_uint16(f, big=True)
-
-        if int.from_bytes(self.ip[0:12], 'big') == 0xffff:
-            self.ipv4 = True
-        else:
-            self.ipv4 = False
 
     def __repr__(self):
         if self.ipv4:
@@ -273,6 +282,18 @@ class Address():
 
         return ret
 
+    def deserialize(self, f):
+        self.version = f.deser_uint32()
+        self.time = f.deser_uint32()
+        self.services = f.deser_uint64()
+        self.ip = f.read(16)
+        self.port = f.deser_uint16(big=True)
+
+        if int.from_bytes(self.ip[0:12], 'big') == 0xffff:
+            self.ipv4 = True
+        else:
+            self.ipv4 = False
+
 class AddrInfo():
     def __init__(self):
         self.address = Address()
@@ -283,8 +304,8 @@ class AddrInfo():
     def deserialize(self, f):
         self.address.deserialize(f)
         self.source = f.read(16)
-        self.last_success = des.deser_int64(f)
-        self.attempts = des.deser_int32(f)
+        self.last_success = f.deser_int64()
+        self.attempts = f.deser_int32()
 
     def __repr__(self):
         return self.address.__repr__()
@@ -293,16 +314,6 @@ class Subnet():
     def __init__(self):
         self.network = b''
         self.netmask = b''
-
-    def deserialize(self, f):
-        self.network = f.read(16)
-        self.netmask = f.read(16)
-        self.valid = des.deser_boolean(f)
-
-        if int.from_bytes(self.network[0:12], 'big') == 0xffff:
-            self.ipv4 = True
-        else:
-            self.ipv4 = False
 
     def __repr__(self):
         if self.ipv4:
@@ -316,18 +327,22 @@ class Subnet():
 
         return ret
 
+    def deserialize(self, f):
+        self.network = f.read(16)
+        self.netmask = f.read(16)
+        self.valid = f.deser_boolean()
+
+        if int.from_bytes(self.network[0:12], 'big') == 0xffff:
+            self.ipv4 = True
+        else:
+            self.ipv4 = False
+
 class BanEntry():
     def __init__(self):
         self.version = 0
         self.create_time = 0
         self.ban_until = 0
         self.reason = BanReason.UNKNOWN
-
-    def deserialize(self, f):
-        self.version = des.deser_int32(f)
-        self.create_time = des.deser_int64(f)
-        self.ban_until = des.deser_int64(f)
-        self.reason = BanReason(des.deser_int8(f))
 
     def __repr__(self):
         ret = "version: {}, create_time: {}, ban_until: {}".format(
@@ -344,6 +359,12 @@ class BanEntry():
             ret += "node_misbehaving"
 
         return ret
+
+    def deserialize(self, f):
+        self.version = f.deser_int32()
+        self.create_time = f.deser_int64()
+        self.ban_until = f.deser_int64()
+        self.reason = BanReason(f.deser_int8())
 
 class Ban():
     """A single entry in the banmap"""
