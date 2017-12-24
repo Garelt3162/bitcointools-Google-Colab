@@ -9,8 +9,8 @@ from enum import Enum
 import struct
 import time
 
-from serialize import SerializationError
-from util import bytes_to_hex_str, uint256_from_str, hash256
+from serialize import SerializationError, BCBytesStream
+from util import bytes_to_hex_str, hash256
 
 class BanReason(Enum):
     UNKNOWN = 0
@@ -18,6 +18,9 @@ class BanReason(Enum):
     MANUALLY_ADDED = 2
 
 COIN = 10 ** 8
+
+VERSION_HD_CHAIN_SPLIT = 2
+VERSION_WITH_HDDATA = 10
 
 class OutPoint():
     def __init__(self, hash=0, n=0):
@@ -32,10 +35,8 @@ class OutPoint():
         self.n = f.deser_uint32()
 
     def serialize(self, f):
-        r = b""
-        r += f.ser_uint256(self.hash)
-        r += f.ser_uint32(self.n)
-        return r
+        f.ser_uint256(self.hash)
+        f.ser_uint32(self.n)
 
 class TxIn():
     def __init__(self, outpoint=None, script_sig=b"", sequence=0):
@@ -58,11 +59,9 @@ class TxIn():
         self.sequence = f.deser_uint32()
 
     def serialize(self, f):
-        r = b""
-        r += self.prevout.serialize()
-        r += f.ser_string(self.script_sig)
-        r += f.ser_uint32(self.sequence)
-        return r
+        self.prevout.serialize(f)
+        f.ser_string(self.script_sig)
+        f.ser_uint32(self.sequence)
 
 class TxOut():
     def __init__(self, value=0, script_pub_key=b""):
@@ -79,10 +78,8 @@ class TxOut():
         self.script_pub_key = f.read(f.deser_compact_size())
 
     def serialize(self, f):
-        r = b""
-        r += f.ser_int64(self.value)
-        r += f.ser_string(self.script_pub_key)
-        return r
+        f.ser_int64(self.value)
+        f.ser_string(self.script_pub_key)
 
 class ScriptWitness():
     def __init__(self):
@@ -109,7 +106,7 @@ class TxInWitness():
         self.scriptWitness.stack = f.deser_string_vector()
 
     def serialize(self, f):
-        return f.ser_string_vector(self.scriptWitness.stack)
+        f.ser_string_vector(self.scriptWitness.stack)
 
     def is_null(self):
         return self.scriptWitness.is_null()
@@ -126,14 +123,12 @@ class TxWitness():
         for i in range(len(self.vtxinwit)):
             self.vtxinwit[i].deserialize(f)
 
-    def serialize(self):
-        r = b""
+    def serialize(self, f):
         # This is different than the usual vector serialization --
         # we omit the length of the vector, which is required to be
         # the same length as the transaction's vin vector.
         for x in self.vtxinwit:
-            r += x.serialize()
-        return r
+            x.serialize(f)
 
     def is_null(self):
         for x in self.vtxinwit:
@@ -161,8 +156,7 @@ class Transaction():
             self.wit = copy.deepcopy(tx.wit)
 
     def __repr__(self):
-        return "CTransaction(version=%i vin=%s vout=%s wit=%s nLockTime=%i)" \
-            % (self.version, repr(self.vin), repr(self.vout), repr(self.wit), self.nLockTime)
+        return "txid: {}, version: {}, no_txins: {}, no_txouts: {}, nLockTime: {}".format(self.txid, self.version, len(self.vin), len(self.vout), self.nLockTime)
 
     def deserialize(self, f):
         self.version = f.deser_int32()
@@ -180,43 +174,31 @@ class Transaction():
         self.sha256 = None
         self.hash = None
 
-    def serialize(self, f):
+    def serialize(self, f, with_witness=True):
         flags = 0
         if not self.wit.is_null():
             flags |= 1
-        r = b""
-        r += f.ser_int32(self.version)
+        f.ser_int32(self.version)
         if flags:
             dummy = []
-            r += f.ser_vector(dummy)
-            r += struct.pack("<B", flags)
-        r += f.ser_vector(self.vin)
-        r += f.ser_vector(self.vout)
-        if flags & 1:
+            f.ser_vector(dummy)
+            f.ser_uint8(flags)
+        f.ser_vector(self.vin, 'serialize')
+        f.ser_vector(self.vout, 'serialize')
+        if (flags & 1) and with_witness:
             if (len(self.wit.vtxinwit) != len(self.vin)):
                 # vtxinwit must have the same length as vin
                 self.wit.vtxinwit = self.wit.vtxinwit[:len(self.vin)]
                 for i in range(len(self.wit.vtxinwit), len(self.vin)):
                     self.wit.vtxinwit.append(TxInWitness())
-            r += self.wit.serialize()
-        r += f.ser_uint32(self.nLockTime)
-        return r
+            self.wit.serialize(f)
+        f.ser_uint32(self.nLockTime)
 
-    # Recalculate the txid (transaction hash without witness)
-    def rehash(self):
-        self.sha256 = None
-        self.calc_sha256()
-
-    # We will only cache the serialization without witness in
-    # self.sha256 and self.hash -- those are expected to be the txid.
-    def calc_sha256(self, with_witness=False):
-        if with_witness:
-            # Don't cache the result, just return it
-            return uint256_from_str(hash256(self.serialize_with_witness()))
-
-        if self.sha256 is None:
-            self.sha256 = uint256_from_str(hash256(self.serialize_without_witness()))
-        self.hash = encode(hash256(self.serialize())[::-1], 'hex_codec').decode('ascii')
+    @property
+    def txid(self):
+        f = BCBytesStream()
+        self.serialize(f, False)
+        return encode(hash256(f.getvalue())[::-1], 'hex_codec').decode('ascii')
 
 class MerkleTransaction(Transaction):
     def __init__(self):
@@ -340,7 +322,77 @@ class KeyPool():
         self.pub_key = f.read(f.deser_compact_size()).hex()
 
     def __repr__(self):
-        return "version: {}, time: {}, pub_key: 0x{}\n".format(self.version, time.ctime(self.time), self.pub_key)
+        return "version: {}, time: {}, pub_key: 0x{}".format(self.version, time.ctime(self.time), self.pub_key)
+
+class Account():
+    """A wallet account."""
+    def __init__(self):
+        self.version = 0
+        self.pub_key = b''
+
+    def deserialize(self, f):
+        self.version = f.deser_int32()
+        self.pub_key = f.read(f.deser_compact_size()).hex()
+
+    def __repr__(self):
+        return "version: {}, pub_key: 0x{}".format(self.version, self.pub_key)
+
+class HDChain():
+    """A wallet HD chain."""
+    def __init__(self):
+        self.version = 0
+        self.external_chain_counter = 0
+        self.master_key_id = b''
+        self.internal_chain_counter = 0
+
+    def deserialize(self, f):
+        self.version = f.deser_uint32()
+        self.external_chain_counter = f.deser_uint32()
+        self.master_key_id = f.read(20).hex()
+        if self.version > VERSION_HD_CHAIN_SPLIT:
+            self.internal_chain_counter = f.deser_uint32()
+
+    def __repr__(self):
+        return "version: {}, master_key_id: {}, external_chain_counter: {}, internal_chain_counter: {}".format(self.version, self.master_key_id, self.external_chain_counter, self.internal_chain_counter)
+
+class AccountingEntry():
+    """Accounting entry for internal wallet transfers"""
+    def __init__(self):
+        self.account = ''
+        self.index = 0
+        self.version = 0
+        self.credit_debit = 0
+        self.time = 0
+        self.other_account = ''
+        self.comment = ''
+
+    def deserialize(self, f):
+        self.version = f.read_int32()
+        self.credit_debit = f.read_int64()
+        self.time = f.read_int64()
+        self.other_account = f.deser_string()
+        self.comment = f.deser_string()
+
+    def __repr__(self):
+        return "version: {}, from_account: {}, index: {}, to_account: {}, credit_debit: {}, time: {}, comment: {}".format(self.version, self.index, self.account, self.other_account, self.credit_debit, time.ctime(self.time), self.comment)
+
+class KeyMeta():
+    """Metadata for a wallet key"""
+    def __init__(self):
+        self.version = 0
+        self.create_time = 0
+        self.hd_key_path = 'Not HD'
+        self.hd_master_key_id = 'Not HD'
+
+    def deserialize(self, f):
+        self.version = f.deser_int32()
+        self.create_time = f.deser_int64()
+        if self.version >= VERSION_WITH_HDDATA:
+            self.hd_key_path = f.deser_string()
+            self.hd_master_key_id = f.read(20).hex()
+
+    def __repr__(self):
+        return "version: {}, create_time: {}, hd_key_path: {}, hd_master_key_id: {}".format(self.version, time.ctime(self.create_time), self.hd_key_path, self.hd_master_key_id)
 
 class Subnet():
     def __init__(self):

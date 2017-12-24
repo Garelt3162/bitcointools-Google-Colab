@@ -4,7 +4,7 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-from io import BufferedReader, BytesIO
+from io import BufferedReader, BytesIO, BufferedRWPair
 import struct
 
 class SerializationError(Exception):
@@ -17,12 +17,14 @@ class BCBytesStream():
     The BufferedReader object is class member _br and all unknown method
     calls are passed to _br"""
 
-    def __init__(self, br):
+    def __init__(self, br=None):
         """Must be initialized with a BufferedReader."""
         if type(br) == BufferedReader or type(br) == BytesIO:
             self._br = br
         elif type(br) == bytes:
             self._br = BytesIO(br)
+        elif not br:
+            self._br = BytesIO()
         else:
             raise TypeError("BCBytesStream requires BufferedReader, BytesIO or bytes object, not {}".format(type(br)))
 
@@ -151,10 +153,10 @@ class BCBytesStream():
         ser_function_name: Allow for an alternate serialization function on the
         entries in the vector."""
 
-        self.write(self.ser_compact_size(len(l)))
+        self.ser_compact_size(len(l))
         for i in l:
             if ser_function_name:
-                self.write(getattr(i, ser_function_name)())
+                getattr(i, ser_function_name)(self)
             else:
                 self.write(i)
 
