@@ -4,8 +4,6 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Deserialize banlist.dat file."""
-import os.path
-
 from datastructures import Ban
 from serialize import open_bs, SerializationError
 from util import hash256
@@ -42,10 +40,8 @@ class Banlist():
 
         return ret
 
-def dump_banlist(datadir):
+def dump_banlist(banlist_file):
     banlist = Banlist()
-
-    banlist_file = os.path.join(datadir, "banlist.dat")
 
     with open_bs(banlist_file, "r") as f:
         banlist.deserialize(f)

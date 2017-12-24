@@ -6,6 +6,7 @@
 """Code for dumping bitcoind datadir files in a human-readable format."""
 
 import optparse
+import os
 
 from banlist import dump_banlist
 from fees import dump_fee_estimates
@@ -33,16 +34,20 @@ def main():
         datadir = options.datadir
 
     if options.banlist:
-        dump_banlist(datadir)
+        banlist_file = os.path.join(datadir, "banlist.dat")
+        dump_banlist(banlist_file)
 
     if options.fees:
-        dump_fee_estimates(datadir)
+        fee_file = os.path.join(datadir, "fee_estimates.dat")
+        dump_fee_estimates(fee_file)
 
     if options.mempool:
-        dump_mempool(datadir)
+        mempool_file = os.path.join(datadir, "mempool.dat")
+        dump_mempool(mempool_file)
 
     if options.peers:
-        dump_peers(datadir)
+        peers_file = os.path.join(datadir, "peers.dat")
+        dump_peers(peers_file)
 
 if __name__ == '__main__':
     main()

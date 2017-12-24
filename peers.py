@@ -4,8 +4,6 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Deserialize peers.dat file."""
-import os.path
-
 from datastructures import AddrInfo
 from serialize import open_bs, SerializationError
 from util import hash256
@@ -97,9 +95,8 @@ class Peers():
 
         return ret
 
-def dump_peers(datadir):
+def dump_peers(peers_file):
     peers = Peers()
-    peers_file = os.path.join(datadir, "peers.dat")
 
     with open_bs(peers_file, "r") as f:
         peers.deserialize(f)

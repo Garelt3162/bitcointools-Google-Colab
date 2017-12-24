@@ -94,6 +94,12 @@ class BCBytesStream():
     def ser_uint64(self, val):
         self.write(struct.pack("<Q", val))
 
+    def deser_double(self):
+        return struct.unpack("<d", self.read(8))[0]
+
+    def ser_double(self, val):
+        self.write(struct.pack("<d", val))
+
     def deser_uint256(self):
         r = 0
         for i in range(8):

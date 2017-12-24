@@ -4,9 +4,6 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Parse fee_estimates.dat"""
-import os.path
-import struct
-
 from serialize import open_bs, SerializationError
 
 class FeeEstimates():
@@ -28,14 +25,14 @@ class FeeEstimates():
         self.failAvg = []
 
     def deserialize(self, f):
-        self.version_required = struct.unpack("<I", f.read(4))[0]
-        self.version_that_wrote = struct.unpack("<I", f.read(4))[0]
+        self.version_required = f.deser_uint32()
+        self.version_that_wrote = f.deser_uint32()
         if self.version_that_wrote < 149900:
             raise SerializationError("Cannot read fee_estimates.dat file with version < 149900")
 
-        self.file_best_seen_height = struct.unpack("<I", f.read(4))[0]
-        self.file_historical_first = struct.unpack("<I", f.read(4))[0]
-        self.file_historical_best = struct.unpack("<I", f.read(4))[0]
+        self.file_best_seen_height = f.deser_uint32()
+        self.file_historical_first = f.deser_uint32()
+        self.file_historical_best = f.deser_uint32()
 
         if self.file_historical_first > self.file_historical_best or self.file_historical_first > self.file_best_seen_height:
             raise SerializationError("Corrupt estimates file. Historical block range for estimates is invalid")
@@ -45,22 +42,22 @@ class FeeEstimates():
             raise SerializationError("Corrupt estimates file. Must have between 2 and 1000 feerate buckets")
 
         for _ in range(no_buckets):
-            self.buckets.append(struct.unpack("<d", f.read(8))[0])
+            self.buckets.append(f.deser_double())
 
-        self.decay = struct.unpack("<d", f.read(8))[0]
-        self.scale = struct.unpack("<I", f.read(4))[0]
+        self.decay = f.deser_double()
+        self.scale = f.deser_uint32()
 
         avg_size = f.deser_compact_size()
         if avg_size != no_buckets:
             raise SerializationError("Corrupt estimates file. Mismatch in feerate average bucket count")
         for _ in range(no_buckets):
-            self.avg.append(struct.unpack("<d", f.read(8))[0])
+            self.avg.append(f.deser_double())
 
         txCtAvg_size = f.deser_compact_size()
         if txCtAvg_size != no_buckets:
             raise SerializationError("Corrupt estimates file. Mismatch in tx count bucket count")
         for _ in range(no_buckets):
-            self.txCtAvg.append(struct.unpack("<d", f.read(8))[0])
+            self.txCtAvg.append(f.deser_double())
 
         no_block_targets = f.deser_compact_size()
         for _ in range(no_block_targets):
@@ -70,7 +67,7 @@ class FeeEstimates():
                 raise SerializationError("Corrupt estimates file. Mismatch in feerate conf average bucket count")
 
             for __ in range(no_buckets):
-                conf_avg.append(struct.unpack("<d", f.read(8))[0])
+                conf_avg.append(f.deser_double())
 
             self.confAvg.append(conf_avg)
 
@@ -85,7 +82,7 @@ class FeeEstimates():
                 raise SerializationError("Corrupt estimates file. Mismatch in one of failure average bucket counts")
 
             for __ in range(no_buckets):
-                fail_avg.append(struct.unpack("<d", f.read(8))[0])
+                fail_avg.append(f.deser_double())
 
             self.failAvg.append(fail_avg)
 
@@ -107,11 +104,10 @@ class FeeEstimates():
 
         return ret
 
-def dump_fee_estimates(datadir):
+def dump_fee_estimates(fee_file):
 
     fee_estimates = FeeEstimates()
 
-    fee_file = os.path.join(datadir, "fee_estimates.dat")
     with open_bs(fee_file, "r") as f:
         fee_estimates.deserialize(f)
 

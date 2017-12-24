@@ -4,7 +4,6 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Parse mempool.dat"""
-import os.path
 import time
 
 from datastructures import Transaction
@@ -17,10 +16,7 @@ class MempoolTx():
         self.fee_delta = fee_delta
 
     def __repr__(self):
-        ret = "Transaction: {}\n".format(self.tx)
-        ret += "entered mempool: {}, fee delta: {}".format(time.ctime(self.time), self.fee_delta)
-
-        return ret
+        return "txid: {}, entered_mempool: {}, fee_delta: {}".format(self.tx.txid, time.ctime(self.time), self.fee_delta)
 
 class Mempool():
     """Represents contents of mempool.dat file."""
@@ -43,19 +39,18 @@ class Mempool():
 
     def __repr__(self):
         ret = "Version: {}\n".format(self.version)
-        ret += "mempool txs: [\n"
-        for tx in self.txs:
-            ret += "    {}\n".format(tx.__repr__())
-        ret += "]"
+        if self.txs:
+            ret += "mempool txs:\n"
+            ret += "\n".join(["  {}".format(tx) for tx in self.txs])
+        else:
+            ret += "mempool empty"
 
         return ret
 
-def dump_mempool(datadir):
-
-    mempool_file = os.path.join(datadir, "mempool.dat")
+def dump_mempool(mempool_file):
+    mempool = Mempool()
 
     with open_bs(mempool_file, "r") as f:
-        mempool = Mempool()
         mempool.deserialize(f)
 
     print(mempool)

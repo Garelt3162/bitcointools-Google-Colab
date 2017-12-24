@@ -42,7 +42,7 @@ def create_env(db_dir=None):
 class Wallet():
     """Represents contents of wallet.dat file."""
 
-    def __init__(self, datadir):
+    def __init__(self, wallet_dir, name):
         self.accounting_entries = []
         self.accounts = {}
         self.default_key = b''
@@ -60,14 +60,14 @@ class Wallet():
         self.wallet_transactions = []
         self.wkeys = {}
 
+        self.name = name
         try:
-            self.db_env = create_env(datadir)
+            self.db_env = create_env(wallet_dir)
         except DBNoSuchFileError:
-            logging.error("Couldn't open " + datadir)
+            logging.error("Couldn't open " + wallet_dir)
             sys.exit(1)
 
-        self.open_wallet(self.db_env)
-
+        self.open_wallet()
         self.parse_wallet()
 
     def __repr__(self):
@@ -121,7 +121,7 @@ class Wallet():
         self.db = DB(self.db_env)
         flags = DB_THREAD | (DB_CREATE if writable else DB_RDONLY)
         try:
-            r = self.db.open("wallet.dat", "main", DB_BTREE, flags)
+            r = self.db.open(self.name, "main", DB_BTREE, flags)
         except DBError:
             r = True
 
