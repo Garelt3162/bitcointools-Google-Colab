@@ -7,8 +7,7 @@
 import os.path
 
 from datastructures import AddrInfo
-import deserialize as des
-from serialize import open_bs
+from serialize import open_bs, SerializationError
 from util import hash256
 
 class Peers():
@@ -29,8 +28,8 @@ class Peers():
       - for each element: index"""
 
     def __init__(self):
-        self.magic = b''
-        self.network = b''
+        self.magic = ''
+        self.network = ''
         self.version = 0
         self.key = b''
         self.new = 0
@@ -41,14 +40,14 @@ class Peers():
         self.bucket_matrix = []
 
     def deserialize(self, f):
-        self.magic, self.network = des.deserialize_magic(f)
+        self.magic, self.network = f.deserialize_magic()
         self.version = f.deser_uint8()
         self.flag = f.read(1)
         assert self.flag == b'\x20'
         self.key = f.read(32)
-        self.new = des.deser_int32(f)
-        self.tried = des.deser_int32(f)
-        self.no_buckets = des.deser_int32(f) ^ 1 << 30
+        self.new = f.deser_int32()
+        self.tried = f.deser_int32()
+        self.no_buckets = f.deser_int32() ^ 1 << 30
 
         for _ in range(self.new):
             new_addr = AddrInfo()
@@ -64,16 +63,16 @@ class Peers():
 
         for _ in range(self.no_buckets):
             bucket = []
-            bucket_size = des.deser_int32(f)
+            bucket_size = f.deser_int32()
             for __ in range(bucket_size):
-                bucket.append(des.deser_int32(f))
+                bucket.append(f.deser_int32())
             self.bucket_matrix.append(bucket)
 
         # Verify the checksum
         position = f.tell()
         f.seek(0)
         if hash256(f.read(position)) != f.read(32):
-            raise des.SerializationError("File checksum incorrect")
+            raise SerializationError("File checksum incorrect")
 
     def __repr__(self):
         ret = "Network magic: 0x{} ({})\n".format(self.magic.hex(), self.network)

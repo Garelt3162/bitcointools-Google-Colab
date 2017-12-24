@@ -4,7 +4,7 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-from io import BufferedReader, BytesIO, BufferedRWPair
+from io import BufferedReader, BytesIO
 import struct
 
 class SerializationError(Exception):
@@ -191,6 +191,19 @@ class BCBytesStream():
         r = self.read(1)
         self.seek(pos)
         return r
+
+    def deserialize_magic(self):
+        magic = self.read(4)
+        if magic == b'\xf9\xbe\xb4\xd9':
+            network = "mainnet"
+        elif magic == b'\x0b\x11\x09\x07':
+            network = "testnet"
+        elif magic == b'\xfa\xbf\xb5\xda':
+            network = "regtest"
+        else:
+            network = "unknown"
+
+        return magic, network
 
 def open_bs(path, mode):
     f = open(path, mode + 'b')

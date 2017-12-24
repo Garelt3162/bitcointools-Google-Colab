@@ -7,19 +7,18 @@
 import os.path
 
 from datastructures import Ban
-import deserialize as des
-from serialize import open_bs
+from serialize import open_bs, SerializationError
 from util import hash256
 
 class Banlist():
     """Represents contents of banlist.dat file."""
     def __init__(self):
         self.magic = b''
-        self.network = b''
+        self.network = ''
         self.banmap = {}
 
     def deserialize(self, f):
-        self.magic, self.network = des.deserialize_magic(f)
+        self.magic, self.network = f.deserialize_magic()
         bl_len = f.deser_compact_size()
 
         for _ in range(bl_len):
@@ -32,7 +31,7 @@ class Banlist():
         position = f.tell()
         f.seek(0)
         if hash256(f.read(position)) != f.read(32):
-            raise des.SerializationError("File checksum incorrect")
+            raise SerializationError("File checksum incorrect")
 
     def __repr__(self):
         ret = "Network magic: 0x{} ({})\n".format(self.magic.hex(), self.network)
