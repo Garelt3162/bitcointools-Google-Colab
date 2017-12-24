@@ -12,15 +12,11 @@ Examples:
 
 Print out wallet keys and transactions:
 
-`bitcoin-wallet-tool.py --dumpwallet --wallet-tx`
-
-Print out all 'received' transactions that aren't yet spent:
-
-`bitcoin-wallet-tool.py --wallet-tx-filter='fromMe:False.*spent:False'`
+`bitcoin-wallet-tool.py --wallet --tx`
 
 ### bitcoin-data-tool.py
 
-Parses and prints datadir files:
+Parses and prints datadir files. Run `bitcoin-data-tool.py --help` for usage.
 
 - `banlist.dat`
 - `fee_estimates.dat`

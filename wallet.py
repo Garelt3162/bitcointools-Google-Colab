@@ -222,7 +222,7 @@ class Wallet():
 
         self.db_env.close()
 
-def dump_wallet(wallet, print_wallet, print_wallet_transactions, transaction_filter):
+def dump_wallet(wallet, print_wallet, print_wallet_transactions):
 
     if print_wallet:
         print(wallet)
