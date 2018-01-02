@@ -6,7 +6,6 @@
 from codecs import encode
 import copy
 from enum import Enum
-import struct
 import time
 
 from serialize import SerializationError, BCBytesStream
@@ -395,6 +394,11 @@ class KeyMeta():
         return "version: {}, create_time: {}, hd_key_path: {}, hd_master_key_id: {}".format(self.version, time.ctime(self.create_time), self.hd_key_path, self.hd_master_key_id)
 
 class Subnet():
+    """An IPv4 or IPv6 subnet.
+
+    network: a 16 byte array representing the host or subnet. An IPv4 address is represented by
+             10 bytes of 0x00, 2 bytes of 0xff, and 4 bytes of the IP address.
+    netmask: the netmask for the subnet."""
     def __init__(self):
         self.network = b''
         self.netmask = b''

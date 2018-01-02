@@ -9,7 +9,11 @@ from serialize import open_bs, SerializationError
 from util import hash256
 
 class Banlist():
-    """Represents contents of banlist.dat file."""
+    """Represents contents of banlist.dat file.
+
+        magic: The network start bytes (4 bytes)
+        network (not serialized in file, derived from magic): The network (mainnet, testnet or regtest)
+        banmap: a dictionary of banned subnets. Key is a Subnet object, value is a BanEntry object."""
     def __init__(self):
         self.magic = b''
         self.network = ''
