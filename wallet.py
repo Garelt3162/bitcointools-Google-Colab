@@ -26,7 +26,7 @@ from bsddb3.db import (  # pip3 install bsddb3
     DB_THREAD,
 )
 
-from datastructures import WalletTransaction, BestBlock, KeyPool, Account, HDChain, AccountingEntry, KeyMeta
+from datastructures import WalletTransaction, BlockLocator, KeyPool, Account, HDChain, AccountingEntry, KeyMeta
 from serialize import BCBytesStream
 from util import short_hex, determine_datadir
 
@@ -41,7 +41,26 @@ def create_env(db_dir=None):
     return db_env
 
 class Wallet():
-    """Represents contents of wallet.dat file."""
+    """Represents contents of wallet.dat file.
+
+    accounting_entries: TODO
+    accounts: TODO
+    default_key: TODO
+    hd_chain: TODO
+    key_meta: TODO
+    keys: TODO
+    minimum_version: TODO
+    names: TODO
+    orderposnext: TODO
+    owner_keys: TODO
+    pool: TODO
+    purposes: TODO
+    records: TODO
+    version: TODO
+    wallet_transactions: TODO
+    wkeys: TODO
+
+    self.name: TODO"""
 
     def __init__(self, wallet_dir, name):
         self.accounting_entries = []
@@ -161,7 +180,7 @@ class Wallet():
                 elif t == "key":
                     public_key = kds.read(kds.deser_compact_size())
                     private_key = vds.read(vds.deser_compact_size())
-                    self.keys[public_key] = private_key
+                    self.keys[public_key]: TODO
                     self.owner_keys[public_key_to_bc_address(public_key)] = private_key
                 elif t == "wkey":
                     public_key = kds.read(kds.deser_compact_size())
@@ -173,11 +192,11 @@ class Wallet():
                 elif t == "defaultkey":
                     self.default_key = vds.read(vds.deser_compact_size())
                 elif t == "bestblock":
-                    best_block = BestBlock()
+                    best_block = BlockLocator()
                     best_block.deserialize(vds)
                     self.best_block = best_block
                 elif t == "bestblock_nomerkle":
-                    best_block_no_merkle = BestBlock()
+                    best_block_no_merkle = BlockLocator()
                     best_block_no_merkle.deserialize(vds)
                     self.best_block_no_merkle = best_block_no_merkle
                 elif t == "purpose":

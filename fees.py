@@ -7,7 +7,26 @@
 from serialize import open_bs, SerializationError
 
 class FeeEstimates():
-    """Represents contests of fee_estimates.dat file."""
+    """Represents contests of fee_estimates.dat file.
+
+    version_required: TODO
+    version_that_wrote: TODO
+    file_best_seen_height: TODO
+    file_historical_first: TODO
+    file_historical_best: TODO
+
+
+    TODO: The following fields are actually from the TxConfirmStats class and should be deserialized separately,
+    since a v15.0 fee_estimates.dat files contains 3 TxConfirmStats objects (feeStats, shortStats and longStats).
+    buckets: TODO
+    decay: TODO
+    scale: TODO
+    max_periods:TODO
+    max_confirms:TODO
+    avg :TODO
+    txCtAvg :TODO
+    confAvg :TODO
+    failAvg :TODO"""
     def __init__(self):
         self.version_required = 0
         self.version_that_wrote = 0
@@ -23,6 +42,24 @@ class FeeEstimates():
         self.txCtAvg = []
         self.confAvg = []
         self.failAvg = []
+
+    def __repr__(self):
+        ret = "Version required: {}\n".format(self.version_required)
+        ret += "Version that wrote: {}\n".format(self.version_that_wrote)
+        ret += "File best seen height: {}\n".format(self.file_best_seen_height)
+        ret += "File historical first: {}\n".format(self.file_historical_first)
+        ret += "File historical best: {}\n".format(self.file_historical_best)
+        ret += "Buckets: {}\n".format(self.buckets)
+        ret += "Decay: {}\n".format(self.decay)
+        ret += "Scale: {}\n".format(self.scale)
+        ret += "Avg Fees: {}\n".format(self.avg)
+        ret += "Bucket tx counts: {}\n".format(self.txCtAvg)
+        ret += "confAvg: {}\n".format(self.confAvg)
+        ret += "failAvg: {}\n".format(self.confAvg)
+        ret += "max periods: {}\n".format(self.max_periods)
+        ret += "max confirms: {}\n".format(self.max_confirms)
+
+        return ret
 
     def deserialize(self, f):
         self.version_required = f.deser_uint32()
@@ -85,24 +122,6 @@ class FeeEstimates():
                 fail_avg.append(f.deser_double())
 
             self.failAvg.append(fail_avg)
-
-    def __repr__(self):
-        ret = "Version required: {}\n".format(self.version_required)
-        ret += "Version that wrote: {}\n".format(self.version_that_wrote)
-        ret += "File best seen height: {}\n".format(self.file_best_seen_height)
-        ret += "File historical first: {}\n".format(self.file_historical_first)
-        ret += "File historical best: {}\n".format(self.file_historical_best)
-        ret += "Buckets: {}\n".format(self.buckets)
-        ret += "Decay: {}\n".format(self.decay)
-        ret += "Scale: {}\n".format(self.scale)
-        ret += "Avg Fees: {}\n".format(self.avg)
-        ret += "Bucket tx counts: {}\n".format(self.txCtAvg)
-        ret += "confAvg: {}\n".format(self.confAvg)
-        ret += "failAvg: {}\n".format(self.confAvg)
-        ret += "max periods: {}\n".format(self.max_periods)
-        ret += "max confirms: {}\n".format(self.max_confirms)
-
-        return ret
 
 def dump_fee_estimates(fee_file):
 

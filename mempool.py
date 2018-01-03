@@ -10,6 +10,13 @@ from datastructures import Transaction
 from serialize import open_bs
 
 class MempoolTx():
+    """A transaction with additional mempool metadata.
+
+    TODO: move this class in datastructures.py.
+
+    tx: the Transaction object
+    time: TODO
+    fee_delta: TODO."""
     def __init__(self, tx, time, fee_delta):
         self.tx = tx
         self.time = time
@@ -19,7 +26,10 @@ class MempoolTx():
         return "txid: {}, entered_mempool: {}, fee_delta: {}".format(self.tx.txid, time.ctime(self.time), self.fee_delta)
 
 class Mempool():
-    """Represents contents of mempool.dat file."""
+    """Represents contents of mempool.dat file.
+
+    version: TODO
+    txs: a list of MempoolTx objects."""
     def __init__(self):
         self.version = 0
         self.txs = []

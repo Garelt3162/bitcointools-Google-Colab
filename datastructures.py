@@ -290,7 +290,11 @@ class WalletTransaction(MerkleTransaction):
         self.from_me = f.deser_boolean()
         self.spent = f.deser_boolean()
 
-class BestBlock():
+class BlockLocator():
+    """Describes a place in the block chain.
+
+    version: TODO
+    have: TODO."""
     def __init__(self):
         self.version = 0
         self.have = []
@@ -305,10 +309,14 @@ class BestBlock():
             best_block = self.have[0]
         else:
             best_block = "empty"
-        return "version:{}, bestblock hash: {}\n".format(self.version, best_block)
+        return "version:{}, block hash: {}\n".format(self.version, best_block)
 
 class KeyPool():
-    """A Keypool Entry."""
+    """A Keypool Entry.
+    
+    version: TODO
+    time: TODO
+    pub_key: TODO."""
     def __init__(self):
         self.version = 0
         self.time = 0
@@ -323,7 +331,10 @@ class KeyPool():
         return "version: {}, time: {}, pub_key: 0x{}".format(self.version, time.ctime(self.time), self.pub_key)
 
 class Account():
-    """A wallet account."""
+    """A wallet account.
+
+    version: TODO
+    pub_key: TODO."""
     def __init__(self):
         self.version = 0
         self.pub_key = b''
@@ -336,7 +347,12 @@ class Account():
         return "version: {}, pub_key: 0x{}".format(self.version, self.pub_key)
 
 class HDChain():
-    """A wallet HD chain."""
+    """A wallet HD chain.
+    
+    version: TODO
+    external_chain_counter: TODO
+    master_key_id: TODO
+    internal_chain_counter: TODO."""
     def __init__(self):
         self.version = 0
         self.external_chain_counter = 0
@@ -354,7 +370,15 @@ class HDChain():
         return "version: {}, master_key_id: {}, external_chain_counter: {}, internal_chain_counter: {}".format(self.version, self.master_key_id, self.external_chain_counter, self.internal_chain_counter)
 
 class AccountingEntry():
-    """Accounting entry for internal wallet transfers"""
+    """Accounting entry for internal wallet transfers.
+    
+    account: TODO
+    index: TODO
+    version: TODO
+    credit_debit: TODO
+    time: TODO
+    other_account: TODO
+    comment: TODO."""
     def __init__(self):
         self.account = ''
         self.index = 0
