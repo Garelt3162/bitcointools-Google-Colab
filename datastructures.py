@@ -22,6 +22,10 @@ VERSION_HD_CHAIN_SPLIT = 2
 VERSION_WITH_HDDATA = 10
 
 class OutPoint():
+    """Points to a unique transaction output.
+
+    hash: the txid of the transaction
+    n: the index of the output amongst all the transactions outputs."""
     def __init__(self, hash=0, n=0):
         self.hash = hash
         self.n = n
@@ -38,6 +42,11 @@ class OutPoint():
         f.ser_uint32(self.n)
 
 class TxIn():
+    """A transaction input.
+
+    prevout: an OutPoint object pointing at the transaction output that is being spent.
+    script_sig: a script which satisfies the conditions placed in the pubkey script of the transaction output being spent.
+    sequence: transaction sequence number. Used to signal whether the transaction is using opt-in RBF. Default value is 0xffffffff."""
     def __init__(self, outpoint=None, script_sig=b"", sequence=0):
         if outpoint is None:
             self.prevout = OutPoint()
@@ -63,6 +72,10 @@ class TxIn():
         f.ser_uint32(self.sequence)
 
 class TxOut():
+    """A transaction output.
+
+    value: the value of the transaction output in satoshi.
+    script_pub_key: a script defining the conditions which must be satisfied to spend this output."""
     def __init__(self, value=0, script_pub_key=b""):
         self.value = value
         self.script_pub_key = script_pub_key
@@ -81,6 +94,11 @@ class TxOut():
         f.ser_string(self.script_pub_key)
 
 class ScriptWitness():
+    """A transaction input witness (used when spending a segwit transaction output).
+
+    stack: a stack of data elements. Note that this is *not* encoded as a CScript. See
+           https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki#witness-program for
+           a full description of the witness program format."""
     def __init__(self):
         # stack is a vector of strings
         self.stack = []
@@ -89,28 +107,22 @@ class ScriptWitness():
         return "ScriptWitness(%s)" % \
                (",".join([x for x in self.stack]))
 
+    def deserialize(self, f):
+        self.stack = f.deser_string_vector()
+
+    def serialize(self, f):
+        f.ser_string_vector(self.stack)
+
     def is_null(self):
         if self.stack:
             return False
         return True
 
-class TxInWitness():
-    def __init__(self):
-        self.scriptWitness = ScriptWitness()
-
-    def __repr__(self):
-        return repr(self.scriptWitness)
-
-    def deserialize(self, f):
-        self.scriptWitness.stack = f.deser_string_vector()
-
-    def serialize(self, f):
-        f.ser_string_vector(self.scriptWitness.stack)
-
-    def is_null(self):
-        return self.scriptWitness.is_null()
-
 class TxWitness():
+    """Witnesses for all of the transactions inputs. Only present in transactions which spend a segwit transaction output.
+
+    vtxinwit: a list of witness fields, one for each transaction input in the transaction. The length of the list
+              is equal to the number of transaction inputs and is set by the Transaction.deserialize() method."""
     def __init__(self):
         self.vtxinwit = []
 
@@ -136,6 +148,14 @@ class TxWitness():
         return True
 
 class Transaction():
+    """A bitcoin transaction.
+
+    version: transaction version number: current default is 1.
+    vin: a list of transaction input TxIn objects
+    vout: a list of transaction output TxOut objects
+    wit: the transaction witness TxWitness object
+    nLockTime: a unix timestamp or block number before which this transaction is not valid
+    txid: (not serialized, derived from other fields) the SHA256 digest of the transaction, excluding the witness. Serves as a unique identifier for the transaction amongst all other transactions."""
     def __init__(self, tx=None):
         if tx is None:
             self.version = 1
@@ -143,15 +163,11 @@ class Transaction():
             self.vout = []
             self.wit = TxWitness()
             self.nLockTime = 0
-            self.sha256 = None
-            self.hash = None
         else:
             self.version = tx.version
             self.vin = copy.deepcopy(tx.vin)
             self.vout = copy.deepcopy(tx.vout)
             self.nLockTime = tx.nLockTime
-            self.sha256 = tx.sha256
-            self.hash = tx.hash
             self.wit = copy.deepcopy(tx.wit)
 
     def __repr__(self):
@@ -167,11 +183,9 @@ class Transaction():
         self.vin = f.deser_vector(TxIn)
         self.vout = f.deser_vector(TxOut)
         if segwit:
-            self.wit.vtxinwit = [TxInWitness() for i in range(len(self.vin))]
+            self.wit.vtxinwit = [ScriptWitness() for i in range(len(self.vin))]
             self.wit.deserialize(f)
         self.nLockTime = f.deser_uint32()
-        self.sha256 = None
-        self.hash = None
 
     def serialize(self, f, with_witness=True):
         flags = 0
@@ -189,7 +203,7 @@ class Transaction():
                 # vtxinwit must have the same length as vin
                 self.wit.vtxinwit = self.wit.vtxinwit[:len(self.vin)]
                 for i in range(len(self.wit.vtxinwit), len(self.vin)):
-                    self.wit.vtxinwit.append(TxInWitness())
+                    self.wit.vtxinwit.append(ScriptWitness())
             self.wit.serialize(f)
         f.ser_uint32(self.nLockTime)
 
@@ -200,20 +214,49 @@ class Transaction():
         return encode(hash256(f.getvalue())[::-1], 'hex_codec').decode('ascii')
 
 class MerkleTransaction(Transaction):
+    """A transaction along with an index to its location in the blockchain. Subclasses Transaction class.
+
+    Despite its name, this object does not store a Merkle proof. Older versions stored the Merkle proof, but
+    it wasn't used for anything other than an expensive sanity check. The merkle_branch field was removed in
+    a backwards-compatible way in https://github.com/bitcoin/bitcoin/pull/6550.
+
+    hash_block: the hash of the block that includes this transaction.
+    merkle_branch: previously used to store the Merkle proof for the transaction's inclusion in the block. For new wallets, this should be 0x00 for backwards compatibility.
+    index: the index of the transaction within the block."""
     def __init__(self):
         super().__init__()
         self.hash_block = 0
-        self.merkle_branch = b''
+        self.merkle_branch = 0
         self.index = 0
 
     def deserialize(self, f):
         super().deserialize(f)
         self.hash_block = f.read(32)
-        merkle_proof_len = f.deser_compact_size()  # Should be zero!
+        # For new wallets, merkle_branch should be zero
+        merkle_proof_len = f.deser_compact_size()
         self.merkle_branch = f.read(32 * merkle_proof_len)
         self.index = f.deser_int32()
 
 class WalletTransaction(MerkleTransaction):
+    """A Transaction together with meta-data for use by the wallet. Subclasses MerkleTransaction class.
+
+    vtxPrev: unused - should be 0x00 for backwards compatibility. Previously used to store the wallet transaction's ancestors. Removed in https://github.com/bitcoin/bitcoin/pull/3694.
+    mapValue: transaction metadata. Can contain the following keys:
+        - comment: TODO
+        - to: TODO
+        - replaces_txid: TODO
+        - replaced_by_txid: TODO
+        - from: TODO
+        - message: TODO
+        - fromaccount: TODO
+        - n: TODO
+        - timesmart: TODO
+        - spent: TODO
+    order_form: TODO
+    time_received_is_tx_time: TODO
+    time_received: TODO
+    from_me: TODO
+    spent: TODO."""
     def __init__(self):
         super().__init__()
         self.vtxPrev = []
@@ -455,13 +498,15 @@ class BanEntry():
         self.reason = BanReason(f.deser_int8())
 
 class Ban():
-    """A single entry in the banmap"""
+    """A single entry in the banmap.
+
+    subnet: a SubNet object
+    ban_entry: a BanEntry object"""
     def __init__(self):
         self.subnet = None
         self.ban_entry = None
 
     def deserialize(self, f):
-        """Parse a ban entry from the start of a bytestream. Return a Ban object."""
         self.subnet = Subnet()
         self.subnet.deserialize(f)
         self.ban_entry = BanEntry()

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c) 2010 Gavin Andresen
+# Copyright (c) 2018 John Newbery
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Code for dumping a bitcoind wallet.dat file in a human-readable format."""
