@@ -242,21 +242,23 @@ class WalletTransaction(MerkleTransaction):
 
     vtxPrev: unused - should be 0x00 for backwards compatibility. Previously used to store the wallet transaction's ancestors. Removed in https://github.com/bitcoin/bitcoin/pull/3694.
     mapValue: transaction metadata. Can contain the following keys:
-        - comment: TODO
-        - to: TODO
-        - replaces_txid: TODO
-        - replaced_by_txid: TODO
-        - from: TODO
-        - message: TODO
-        - fromaccount: TODO
-        - n: TODO
-        - timesmart: TODO
-        - spent: TODO
-    order_form: TODO
-    time_received_is_tx_time: TODO
-    time_received: TODO
-    from_me: TODO
-    spent: TODO."""
+        - comment: a user-set comment string, provided when using the sendtoaddress RPC.
+        - to: a user-set 'to' comment string, provided when using the sendtoaddress RPC.
+        - replaces_txid: txid (as HexStr) of transaction replaced by this transaction using bumpfee.
+        - replaced_by_txid: txid (as HexStr) of transaction that replaced this transaction using bumpfee.
+        - fromaccount: the account that this transaction was sent from. Set when using the sendfrom RPC. Note that accounts and sendfrom are both deprecated.
+        - n: the wallet transaction's index in the wallet's ordered list of transactions.
+        - timesmart: stable timestamp that never changes, and reflects the order a transaction was added to the wallet. See https://github.com/bitcoin/bitcoin/pull/1393.
+        'from', 'message' and 'spent' are obsolete keys that can be ignored.
+    order_form: a list of key-value pairs related to a payment
+        - PaymentRequest: a serialized payment request (see https://github.com/bitcoin/bitcoin/pull/2539 for details).
+        - Message: the message part of a bitcoin: URI, for example bitcoin:123...?message=example.
+    time_received_is_tx_time: unused int. This position in the serialized transaction was briefly used as a version field. See
+        https://github.com/bitcoin/bitcoin/commit/e4ff4e6898d378b1a3e83791034a7af455fde3ab#diff-23cfe05393c8433e384d2c385f06ab93R776 for example.
+    time_received: the clock time when the transaction was received by the wallet.
+    from_me: whether the transaction was created by this wallet software. Set to 1 if it was created by this wallet or 0 if it was created externally and received over the network or sent using
+        the sendrawtransaction RPC.
+    spent: unused. Previously used to mark whether the transaction had been spent. Removed in https://github.com/bitcoin/bitcoin/pull/3694."""
     def __init__(self):
         super().__init__()
         self.vtxPrev = []
@@ -287,52 +289,6 @@ class WalletTransaction(MerkleTransaction):
         self.time_received = f.deser_uint32()
         self.from_me = f.deser_boolean()
         self.spent = f.deser_boolean()
-
-class Address():
-    def __init__(self):
-        self.version = 0
-        self.time = 0
-        self.services = 0
-        self.ip = b''
-        self.port = 0
-
-    def __repr__(self):
-        if self.ipv4:
-            ret = ".".join([str(int.from_bytes(self.ip[n:n + 1], 'big')) for n in range(12, 16)])
-        else:
-            ret = ":".join([self.ip[n:n + 1].hex() for n in range(16)])
-
-        ret += ", port: {}".format(self.port)
-
-        return ret
-
-    def deserialize(self, f):
-        self.version = f.deser_uint32()
-        self.time = f.deser_uint32()
-        self.services = f.deser_uint64()
-        self.ip = f.read(16)
-        self.port = f.deser_uint16(big=True)
-
-        if int.from_bytes(self.ip[0:12], 'big') == 0xffff:
-            self.ipv4 = True
-        else:
-            self.ipv4 = False
-
-class AddrInfo():
-    def __init__(self):
-        self.address = Address()
-        self.source = b''
-        self.last_success = 0
-        self.attempts = 0
-
-    def deserialize(self, f):
-        self.address.deserialize(f)
-        self.source = f.read(16)
-        self.last_success = f.deser_int64()
-        self.attempts = f.deser_int32()
-
-    def __repr__(self):
-        return self.address.__repr__()
 
 class BestBlock():
     def __init__(self):
@@ -419,7 +375,14 @@ class AccountingEntry():
         return "version: {}, from_account: {}, index: {}, to_account: {}, credit_debit: {}, time: {}, comment: {}".format(self.version, self.index, self.account, self.other_account, self.credit_debit, time.ctime(self.time), self.comment)
 
 class KeyMeta():
-    """Metadata for a wallet key"""
+    """Metadata for a wallet key.
+
+    version: the version of the KeyMeta object. Can be one of the following values:
+        - 1 (VERSION_BASIC)
+        - 10 (VERSION_WITH_HDDATA): as VERSION_BASIC, but the metadata also contains the HD key info.
+    create_time: when the key was created.
+    hd_key_path: (only present if version is >= VERSION_WITH_HDDATA): the BIP 32 HD key derivation path.
+    hd_master_key_id: (only present if version is >= VERSION_WITH_HDDATA): the id of the HD masterkey used to derive this key."""
     def __init__(self):
         self.version = 0
         self.create_time = 0
@@ -435,6 +398,72 @@ class KeyMeta():
 
     def __repr__(self):
         return "version: {}, create_time: {}, hd_key_path: {}, hd_master_key_id: {}".format(self.version, time.ctime(self.create_time), self.hd_key_path, self.hd_master_key_id)
+
+class Address():
+    """Information about a remote bitcoin node, used by bitcoind's addrman.
+
+    version: version of the bitcoind software used to serialize this Address object to disk.
+    time: last time the Address object was updated.
+    services: A bitfield of node services:
+        - NODE_NETWORK (1 << 0): the node is capable of serving the complete block chain.
+        - NODE_GETUTXO (1 << 1): the node is capable of responding to the getutxo protocol request. See BIP 64.
+        - NODE_BLOOM (1 << 2): the node is capable and willing to handle bloom-filtered connections.
+        - NODE_WITNESS (1 << 3): the node can be asked for blocks and transactions including witness data.
+        - NODE_NETWORK_LIMITED (1 << 10): the same as NODE_NETWORK with the limitation of only serving the last 288 (2 day) blocks.
+                                          See BIP159 for details.
+    ip: a 16 byte array representing the ip address of the remote node. An IPv4 address is represented by
+        10 bytes of 0x00, 2 bytes of 0xff, and 4 bytes of the IP address.
+    ipv4: (not serialized) an internal boolean to mark whether this is an ipv4 address.
+    port: the port number of the remote node."""
+    def __init__(self):
+        self.version = 0
+        self.time = 0
+        self.services = 0
+        self.ip = b''
+        self.port = 0
+
+    def __repr__(self):
+        if self.ipv4:
+            ret = ".".join([str(int.from_bytes(self.ip[n:n + 1], 'big')) for n in range(12, 16)])
+        else:
+            ret = ":".join([self.ip[n:n + 1].hex() for n in range(16)])
+
+        ret += ", port: {}".format(self.port)
+
+        return ret
+
+    def deserialize(self, f):
+        self.version = f.deser_uint32()
+        self.time = f.deser_uint32()
+        self.services = f.deser_uint64()
+        self.ip = f.read(16)
+        self.port = f.deser_uint16(big=True)
+
+        if int.from_bytes(self.ip[0:12], 'big') == 0xffff:
+            self.ipv4 = True
+        else:
+            self.ipv4 = False
+
+class AddrInfo(Address):
+    """Extended information about a remote bitcoin node. Subclasses Address.
+
+    source: where we first learned about this address.
+    last_success: last successful connection by us.
+    attempts: connection attempts since last successful attempt."""
+    def __init__(self):
+        super().__init__()
+        self.source = b''
+        self.last_success = 0
+        self.attempts = 0
+
+    def __repr__(self):
+        return super().__repr__()
+
+    def deserialize(self, f):
+        super().deserialize(f)
+        self.source = f.read(16)
+        self.last_success = f.deser_int64()
+        self.attempts = f.deser_int32()
 
 class Subnet():
     """An IPv4 or IPv6 subnet.
@@ -469,6 +498,15 @@ class Subnet():
             self.ipv4 = False
 
 class BanEntry():
+    """Information about a banned subnet or host.
+
+    version: the version of bitcoind which serialized this BanEntry.
+    create_time: when the ban started.
+    ban_until: when the ban expires.
+    reason: the reason for the ban. Can be one of:
+        - unknown: reason for ban is not known. reason should never be set to this value.
+        - manually_added: the ban was manually added using the setban RPC.
+        - node_misbehaving: the node was banned automatically because it violated DOS behaviour rules."""
     def __init__(self):
         self.version = 0
         self.create_time = 0
