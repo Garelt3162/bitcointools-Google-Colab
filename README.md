@@ -22,3 +22,7 @@ Parses and prints datadir files. Run `bitcoin-data-tool.py --help` for usage.
 - `fee_estimates.dat`
 - `mempool.dat`
 - `peers.dat`
+
+### testing
+
+Run `python -m unittest` to execute all unit tests. Append `-v` for verbose logging.
