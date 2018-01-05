@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+#
+# Copyright (c) 2018 John Newbery
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+"""Test base58.py"""
+import unittest
+
+import base58
+
+class Base58TestCase(unittest.TestCase):
+    # TODO: test base58 encoding/decoding
+    pass

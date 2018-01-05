@@ -4,7 +4,9 @@
 # Copyright (c) 2018 John Newbery
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
-"""encode/decode base58 in the same way that Bitcoin does"""
+"""encode/decode base58 addresses.
+
+TODO: add encoding of bech32 addresses."""
 from util import hash160, hash256
 
 B58_CHARSET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
