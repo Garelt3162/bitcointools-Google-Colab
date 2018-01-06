@@ -10,7 +10,7 @@ from base58 import public_key_to_bc_address
 import logging
 import sys
 
-from bsddb3.db import (  # pip3 install bsddb3
+from bsddb3.db import (  # pip3 install bsddb3. Requires berkeley-db to be installed.
     DB,
     DBEnv,
     DBError,
@@ -180,7 +180,7 @@ class Wallet():
                 elif t == "key":
                     public_key = kds.read(kds.deser_compact_size())
                     private_key = vds.read(vds.deser_compact_size())
-                    self.keys[public_key]: TODO
+                    self.keys[public_key] = private_key
                     self.owner_keys[public_key_to_bc_address(public_key)] = private_key
                 elif t == "wkey":
                     public_key = kds.read(kds.deser_compact_size())

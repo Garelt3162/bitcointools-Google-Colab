@@ -19,7 +19,7 @@ def bytes_to_base58(bs):
     v = int.from_bytes(bs, 'big')
 
     result = ''
-    while v >= 0:
+    while v >= 1:
         v, mod = divmod(v, 58)
         result = B58_CHARSET[mod] + result
 
