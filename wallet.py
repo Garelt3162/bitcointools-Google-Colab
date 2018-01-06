@@ -58,9 +58,7 @@ class Wallet():
     records: TODO
     version: TODO
     wallet_transactions: TODO
-    wkeys: TODO
-
-    self.name: TODO"""
+    wkeys: TODO."""
 
     def __init__(self, wallet_dir, name):
         self.accounting_entries = []
@@ -80,14 +78,13 @@ class Wallet():
         self.wallet_transactions = []
         self.wkeys = {}
 
-        self.name = name
         try:
             self.db_env = create_env(wallet_dir)
         except DBNoSuchFileError:
             logging.error("Couldn't open " + wallet_dir)
             sys.exit(1)
 
-        self.open_wallet()
+        self.open_wallet(name)
         self.parse_wallet()
 
     def __repr__(self):
@@ -137,11 +134,11 @@ class Wallet():
 
         return ret
 
-    def open_wallet(self, writable=False):
+    def open_wallet(self, name, writable=False):
         self.db = DB(self.db_env)
         flags = DB_THREAD | (DB_CREATE if writable else DB_RDONLY)
         try:
-            r = self.db.open(self.name, "main", DB_BTREE, flags)
+            r = self.db.open(name, "main", DB_BTREE, flags)
         except DBError:
             r = True
 
