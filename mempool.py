@@ -12,11 +12,11 @@ from serialize import open_bs
 class MempoolTx():
     """A transaction with additional mempool metadata.
 
-    TODO: move this class in datastructures.py.
+    This is not a true bitcoind data structure. It is directly serialized as Transaction|time|fee_delta.
 
     tx: the Transaction object
-    time: TODO
-    fee_delta: TODO."""
+    time: the time the transaction entered the mempool.
+    fee_delta: the fee delta set by the `prioritisetransaction` RPC."""
     def __init__(self, tx, time, fee_delta):
         self.tx = tx
         self.time = time
@@ -28,14 +28,18 @@ class MempoolTx():
 class Mempool():
     """Represents contents of mempool.dat file.
 
-    version: TODO
-    txs: a list of MempoolTx objects."""
+    version: the mempool file version. Must equal 1.
+    txs: a list of MempoolTx objects.
+    map_deltas: a map of fee deltas from txid to fee_delta."""
     def __init__(self):
         self.version = 0
         self.txs = []
+        map_deltas = {}
 
     def deserialize(self, f):
         self.version = f.deser_int64()
+        if self.version != 1:
+            raise SerializationError("Corrupt mempool.dat file. Version {} != 1".format(self.version))
 
         txs = f.deser_int64()
 
@@ -46,6 +50,9 @@ class Mempool():
             fee_delta = f.deser_int64()
 
             self.txs.append(MempoolTx(tx, time, fee_delta))
+
+        map_deltas_len = f.deser_compact_size()
+        # TODO: deserialize map_deltas
 
     def __repr__(self):
         ret = "Version: {}\n".format(self.version)

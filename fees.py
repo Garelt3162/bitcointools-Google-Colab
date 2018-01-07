@@ -9,8 +9,8 @@ from serialize import open_bs, SerializationError
 class TxConfirmStats():
     """Tracks buckets of transactions and how long it took for them to confirm in a block.
 
-    TODO: The following fields are actually from the TxConfirmStats class and should be deserialized separately,
-    since a v15.0 fee_estimates.dat files contains 3 TxConfirmStats objects (feeStats, shortStats and longStats).
+    From v15.0 fee_estimates.dat files contains 3 TxConfirmStats objects (feeStats, shortStats and longStats).
+
     decay: TODO
     scale: TODO
     max_periods:TODO

@@ -6,7 +6,8 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """encode/decode base58 addresses.
 
-TODO: add encoding of bech32 addresses."""
+TODO: add decoding of base58 addresses.
+TODO: add encoding/decoding of bech32 addresses."""
 from util import hash160, hash256
 
 B58_CHARSET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
@@ -30,32 +31,6 @@ def bytes_to_base58(bs):
         bs = bs[2:]
 
     return result
-
-# def b58decode(v, length):
-#     """ decode v into a string of len bytes"""
-#     long_value = 0
-#     for (i, c) in enumerate(v[::-1]):
-#         long_value += B58_CHARSET.find(c) * (58**i)
-
-#     result = ''
-#     while long_value >= 256:
-#         div, mod = divmod(long_value, 256)
-#         result = chr(mod) + result
-#         long_value = div
-#     result = chr(long_value) + result
-
-#     pad = 0
-#     for c in v:
-#         if c == B58_CHARSET[0]:
-#             pad += 1
-#         else:
-#             break
-
-#     result = chr(0) * pad + result
-#     if length is not None and len(result) != length:
-#         return None
-
-#     return result
 
 def public_key_to_bc_address(public_key):
     """Return the base58 address for a public key."""
