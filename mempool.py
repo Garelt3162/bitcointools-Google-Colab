@@ -30,11 +30,11 @@ class Mempool():
 
     version: the mempool file version. Must equal 1.
     txs: a list of MempoolTx objects.
-    map_deltas: a map of fee deltas from txid to fee_delta."""
+    map_deltas: a map of fee deltas from txid to fee_delta for txs that aren't in the mempool."""
     def __init__(self):
         self.version = 0
         self.txs = []
-        map_deltas = {}
+        self.map_deltas = {}
 
     def deserialize(self, f):
         self.version = f.deser_int64()
@@ -52,15 +52,24 @@ class Mempool():
             self.txs.append(MempoolTx(tx, time, fee_delta))
 
         map_deltas_len = f.deser_compact_size()
-        # TODO: deserialize map_deltas
+        for _ in range(map_deltas_len):
+            txid = f.deser_uint256()
+            delta = f.deser_int64()
+            self.map_deltas[hex(txid)[2:]] = delta
 
     def __repr__(self):
         ret = "Version: {}\n".format(self.version)
         if self.txs:
-            ret += "mempool txs:\n"
+            ret += "\nmempool txs:\n"
             ret += "\n".join(["  {}".format(tx) for tx in self.txs])
         else:
-            ret += "mempool empty"
+            ret += "\nmempool empty"
+
+        if self.map_deltas:
+            ret += "\nmap_deltas:\n"
+            ret += "\n".join(["  {}: {}".format(txid.hex(), delta) for txid, delta in self.map_deltas.items()])
+        else:
+            ret += "\nno fee_deltas"
 
         return ret
 
