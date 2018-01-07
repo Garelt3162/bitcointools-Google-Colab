@@ -72,26 +72,32 @@ class Peers():
         if hash256(f.read(position)) != f.read(32):
             raise SerializationError("File checksum incorrect")
 
-    def __repr__(self):
-        ret = "Network magic: 0x{} ({})\n".format(self.magic.hex(), self.network)
-        ret += "Version: {}\n".format(self.version)
-        ret += "Key: 0x{}\n".format(self.key.hex())
-        ret += "new entries: {}\n".format(self.new)
-        ret += "tried entries: {}\n".format(self.tried)
-        ret += "no_buckets: {}\n".format(self.no_buckets)
+    def dump(self, verbose=False):
+        ret = "Network magic: 0x{} ({})".format(self.magic.hex(), self.network)
+        ret += "\nVersion: {}".format(self.version)
+        ret += "\nKey: 0x{}".format(self.key.hex())
+        ret += "\n\ntried entries: {}".format(self.tried)
+        if self.tried:
+            if not verbose:
+                self.tried_table = self.tried_table[0:10]
+            ret += "\ntried peers:\n"
+            ret += "\n".join(["    {}. {}".format(n, tried_addr.__repr__()) for n, tried_addr in enumerate(self.tried_table)])
+            if not verbose and self.tried > 10:
+                ret += "    ..."
 
-        ret += "\nnew peers: [\n"
-        for n, new_addr in enumerate(self.new_table):
-            ret += "{}. {}\n".format(n, new_addr.__repr__())
-        ret += "]\n"
+        ret += "\n\nnew entries: {}".format(self.new)
+        if self.new:
+            if not verbose:
+                self.new_table = self.new_table[0:10]
+            ret += "\nnew peers:\n"
+            ret += "\n".join(["    {}. {}".format(n, new_addr.__repr__()) for n, new_addr in enumerate(self.new_table)])
+            if not verbose and self.new > 10:
+                ret += "\n    ..."
 
-        ret += "\ntried peers: [\n"
-        for n, tried_addr in enumerate(self.tried_table):
-            ret += "{}. {}\n".format(n, tried_addr.__repr__())
-        ret += "]\n"
-
-        ret += "\nBucket matrix:\n\n"
-        ret += "\n".join([str(b) for b in self.bucket_matrix])
+        ret += "\n\nno_buckets: {}".format(self.no_buckets)
+        if verbose:
+            ret += "\nbuckets:\n"
+            ret += "\n".join([str(b) for b in self.bucket_matrix])
 
         return ret
 
@@ -101,4 +107,4 @@ def dump_peers(peers_file):
     with open_bs(peers_file, "r") as f:
         peers.deserialize(f)
 
-    print(peers)
+    print(peers.dump())

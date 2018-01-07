@@ -24,29 +24,8 @@ def hash256(s):
 def hash160(s):
     return hashlib.new('ripemd160', sha256(s)).digest()
 
-def count_bytes(hex_string):
-    return len(bytearray.fromhex(hex_string))
-
 def bytes_to_hex_str(byte_str):
     return hexlify(byte_str).decode('ascii')
-
-def hex_str_to_bytes(hex_str):
-    return unhexlify(hex_str.encode('ascii'))
-
-def str_to_b64str(string):
-    return b64encode(string.encode('utf-8')).decode('ascii')
-
-def uint256_from_str(s):
-    r = 0
-    t = struct.unpack("<IIIIIIII", s[:32])
-    for i in range(8):
-        r += t[i] << (i * 32)
-    return r
-
-def uint256_from_compact(c):
-    nbytes = (c >> 24) & 0xFF
-    v = (c & 0xFFFFFF) << (8 * (nbytes - 3))
-    return v
 
 def determine_datadir():
     if platform.system() == "Darwin":
