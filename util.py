@@ -48,12 +48,6 @@ def uint256_from_compact(c):
     v = (c & 0xFFFFFF) << (8 * (nbytes - 3))
     return v
 
-def short_hex(b):
-    t = b.hex()
-    if len(t) < 11:
-        return t
-    return "{}...{}".format(t[:4], t[-3:])
-
 def determine_datadir():
     if platform.system() == "Darwin":
         return os.path.expanduser("~/Library/Application Support/Bitcoin/")

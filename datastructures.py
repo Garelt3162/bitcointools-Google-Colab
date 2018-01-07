@@ -21,6 +21,48 @@ COIN = 10 ** 8
 VERSION_HD_CHAIN_SPLIT = 2
 VERSION_WITH_HDDATA = 10
 
+COMPRESSED_KEY_START = '3081d30201010420'
+COMPRESSED_KEY_MIDDLE = 'a08185308182020101302c06072a8648ce3d0101022100fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f300604010004010704210279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141020101a124032200'
+UNCOMPRESSED_KEY_START = '308001130201010420'
+UNCOMPRESSED_KEY_MIDDLE = 'a081a53081a2020101302c06072a8648ce3d0101022100fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f300604010004010704410479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141020101a144034200'
+
+class PrivateKey():
+    """A private key.
+
+    Bitcoin eliptic curve private keys are serialized in DER format. See section C.4 of SEC 1
+    <http://www.secg.org/sec1-v2.pdf>. The optional parameters and publicKey fields are included."""
+
+    def __init__(self):
+        self.der = b''
+        self.x = 0
+        self.compressed = False
+
+    def __repr__(self):
+        return self.x
+
+    def deserialize(self, f):
+        length = f.deser_compact_size()
+        start = f.read(2)
+        
+        if start.hex() == COMPRESSED_KEY_START[0:4]:
+            # 'compressed' version of a private key
+            start += f.read(6)
+            if start.hex() != COMPRESSED_KEY_START:
+                raise SerializationError("Corrupt key in wallet: DER prefix incorrect {} != {} ".format(start.hex(), COMPRESSED_KEY_START))
+            self.x = f.read(32).hex()
+            middle = f.read(141)
+            if middle.hex() != COMPRESSED_KEY_MIDDLE:
+                raise SerializationError("Corrupt key in wallet: DER middle section incorrect {} != {}".format(middle.hex(), COMPRESSED_KEY_MIDDLE))
+        else:
+            # 'uncompressed' version of a private key
+            start += f.read(7)
+            if start.hex() != UNCOMPRESSED_KEY_START:
+                raise SerializationError("Corrupt key in wallet: DER prefix incorrect {} != {} ".format(start.hex(), UNCOMPRESSED_KEY_START))
+            self.x = f.read(32).hex()
+            middle = f.read(171)
+            if middle.hex() != UNCOMPRESSED_KEY_MIDDLE:
+                raise SerializationError("Corrupt key in wallet: DER middle section incorrect {} != {}".format(middle.hex(), UNCOMPRESSED_KEY_MIDDLE))
+
 class OutPoint():
     """Points to a unique transaction output.
 

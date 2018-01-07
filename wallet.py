@@ -26,9 +26,18 @@ from bsddb3.db import (  # pip3 install bsddb3. Requires berkeley-db to be insta
     DB_THREAD,
 )
 
-from datastructures import WalletTransaction, BlockLocator, KeyPool, Account, HDChain, AccountingEntry, KeyMeta
-from serialize import BCBytesStream
-from util import short_hex, determine_datadir
+from datastructures import (
+    Account,
+    AccountingEntry,
+    BlockLocator,
+    HDChain,
+    KeyMeta,
+    KeyPool,
+    PrivateKey,
+    WalletTransaction,
+)
+from serialize import BCBytesStream, SerializationError
+from util import determine_datadir
 
 VERSION_HD_CHAIN_SPLIT = 2
 VERSION_WITH_HDDATA = 10
@@ -101,7 +110,7 @@ class Wallet():
             ret += "hd_chain:\n  {}\n".format(self.hd_chain)
         if self.keys:
             ret += "keys:\n"
-            ret += "\n".join(["  pub_key: {}, address: {}, priv_key: {}".format(pub_key.hex(), public_key_to_bc_address(pub_key), short_hex(priv_key)) for pub_key, priv_key in self.keys.items()])
+            ret += "\n".join(["  pub_key: {}, address: {}, priv_key: {}".format(pub_key.hex(), public_key_to_bc_address(pub_key), priv_key.__repr__()) for pub_key, priv_key in self.keys.items()])
             ret += "\n"
         if self.wkeys:
             ret += "wkeys:\n"
@@ -147,6 +156,34 @@ class Wallet():
             sys.exit(1)
 
     def parse_wallet(self):
+        """Parse a berkeley db .dat wallet file.
+
+        A bekeley db .dat wallet file is a key-value store, with the following possible keys:
+
+        - acc: account information. key is "acc"+string account name. Value is an Account object.
+               acc entries are not read on startup, only when the deprecated `setaccount` and 
+               `getaccountaddress` RPCs are called.
+        - acentry: TODO
+        - bestblock: TODO
+        - bestblock_nomerkle: TODO
+        - ckey: TODO
+        - cscript: TODO
+        - defaultkey: TODO
+        - destdata: TODO
+        - hdchain: TODO
+        - key: TODO
+        - keymeta: TODO
+        - minversion: TODO
+        - mkey: TODO
+        - name: TODO
+        - orderposnext: TODO
+        - pool: TODO
+        - purpose: TODO
+        - tx: TODO
+        - version: TODO
+        - watchmeta: TODO
+        - watchs: TODO
+        - wkey: TODO"""
         for (key, value) in self.db.items():
             d = {}
 
@@ -160,34 +197,16 @@ class Wallet():
             d["__type__"] = t
 
             try:
-                if t == "tx":
-                    tx_id = kds.read(32)
-                    tx = WalletTransaction()
-                    tx.deserialize(vds)
-                    tx.tx_id = tx_id
-                    self.wallet_transactions.append(tx)
-                elif t == "name":
-                    self.names[vds.deser_string()] = kds.deser_string()
-                elif t == "version":
-                    self.version = vds.deser_uint32()
-                elif t == "minversion":
-                    self.minimum_version = vds.deser_uint32()
-                elif t == "orderposnext":
-                    self.orderposnext = vds.deser_int64()
-                elif t == "key":
-                    public_key = kds.read(kds.deser_compact_size())
-                    private_key = vds.read(vds.deser_compact_size())
-                    self.keys[public_key] = private_key
-                    self.owner_keys[public_key_to_bc_address(public_key)] = private_key
-                elif t == "wkey":
-                    public_key = kds.read(kds.deser_compact_size())
-                    private_key = vds.read(vds.deser_compact_size())
-                    created = vds.deser_int64()
-                    expires = vds.deser_int64()
-                    comment = vds.deser_string()
-                    self.wkeys.append({'pubkey': public_key, 'priv_key': private_key, 'created': created, 'expiers': expires, 'comment': comment})
-                elif t == "defaultkey":
-                    self.default_key = vds.read(vds.deser_compact_size())
+                if t == "acc":
+                    account = Account()
+                    account.deserialize(vds)
+                    self.accounts[kds.deser_string()] = account
+                elif t == "acentry":
+                    account_entry = AccountingEntry()
+                    account_entry.deserialize(vds)
+                    account_entry.account = kds.deser_string()
+                    account_entry.index = kds.deser_uint64()
+                    self.accounting_entries.append(account_entry)
                 elif t == "bestblock":
                     best_block = BlockLocator()
                     best_block.deserialize(vds)
@@ -196,30 +215,59 @@ class Wallet():
                     best_block_no_merkle = BlockLocator()
                     best_block_no_merkle.deserialize(vds)
                     self.best_block_no_merkle = best_block_no_merkle
-                elif t == "purpose":
-                    self.purposes[kds.deser_string()] = vds.deser_string()
-                elif t == "pool":
-                    keypool = KeyPool()
-                    keypool.deserialize(vds)
-                    self.pool[kds.deser_int64()] = keypool
-                elif t == "acc":
-                    account = Account()
-                    account.deserialize(vds)
-                    self.accounts[kds.deser_string()] = account
+                elif t == "ckey":
+                    pass  # TODO: parse ckey entries
+                elif t == "cscript":
+                    pass  # TODO: parse cscript entries
+                elif t == "defaultkey":
+                    self.default_key = vds.read(vds.deser_compact_size())
                 elif t == "hdchain":
                     hd_chain = HDChain()
                     hd_chain.deserialize(vds)
                     self.hd_chain = hd_chain
-                elif t == "acentry":
-                    account_entry = AccountingEntry()
-                    account_entry.deserialize(vds)
-                    account_entry.account = kds.deser_string()
-                    account_entry.index = kds.deser_uint64()
-                    self.accounting_entries.append(account_entry)
+                elif t == "key":
+                    public_key = kds.read(kds.deser_compact_size())
+                    private_key = PrivateKey()
+                    private_key.deserialize(vds)
+                    self.keys[public_key] = private_key
+                    self.owner_keys[public_key_to_bc_address(public_key)] = private_key
                 elif t == "keymeta":
                     key_metadata = KeyMeta()
                     key_metadata.deserialize(vds)
                     self.key_meta.append(key_metadata)
+                elif t == "minversion":
+                    self.minimum_version = vds.deser_uint32()
+                elif t == "mkey":
+                    pass  # TODO: parse mkey entries
+                elif t == "name":
+                    self.names[vds.deser_string()] = kds.deser_string()
+                elif t == "orderposnext":
+                    self.orderposnext = vds.deser_int64()
+                elif t == "pool":
+                    keypool = KeyPool()
+                    keypool.deserialize(vds)
+                    self.pool[kds.deser_int64()] = keypool
+                elif t == "purpose":
+                    self.purposes[kds.deser_string()] = vds.deser_string()
+                elif t == "tx":
+                    tx_id = kds.read(32)
+                    tx = WalletTransaction()
+                    tx.deserialize(vds)
+                    tx.tx_id = tx_id
+                    self.wallet_transactions.append(tx)
+                elif t == "version":
+                    self.version = vds.deser_uint32()
+                elif t == "watchmeta":
+                    pass  # TODO: parse watchmeta entries
+                elif t == "watchs":
+                    pass  # TODO: parse watchs entries
+                elif t == "wkey":
+                    public_key = kds.read(kds.deser_compact_size())
+                    private_key = vds.read(vds.deser_compact_size())
+                    created = vds.deser_int64()
+                    expires = vds.deser_int64()
+                    comment = vds.deser_string()
+                    self.wkeys.append({'pubkey': public_key, 'priv_key': private_key, 'created': created, 'expiers': expires, 'comment': comment})
                 else:
                     print("ERROR parsing wallet.dat, type %s" % t)
                     self.records.append(d)
