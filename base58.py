@@ -26,9 +26,9 @@ def bytes_to_base58(bs):
 
     # Leading-zero-compression:
     # leading 0-bytes in the input become leading 1s
-    while (bs[:2] == '00'):
+    while (bs[:1] == b'\x00'):
         result = B58_CHARSET[0] + result
-        bs = bs[2:]
+        bs = bs[1:]
 
     return result
 
