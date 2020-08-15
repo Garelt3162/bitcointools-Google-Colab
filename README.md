@@ -1,6 +1,6 @@
 # bitcointools
 
-A toolchain for bitcoind data files.
+Tools for bitcoind data files.
 
 Exit bitcoind before reading any data files.
 
